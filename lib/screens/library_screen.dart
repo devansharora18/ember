@@ -17,6 +17,24 @@ class LibraryScreen extends StatefulWidget {
 class _LibraryScreenState extends State<LibraryScreen> {
   final List<Book> _books = [];
   bool _loaded = false;
+  bool _searching = false;
+  String _query = '';
+  final _searchController = TextEditingController();
+
+  List<Book> get _filteredBooks {
+    if (_query.isEmpty) return _books;
+    final q = _query.toLowerCase();
+    return _books.where((b) =>
+      b.title.toLowerCase().contains(q) ||
+      b.author.toLowerCase().contains(q)
+    ).toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -215,34 +233,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: SizedBox(
                   height: 63,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Text(
-                            'Library',
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: IconButton(
-                          onPressed: () {},
-                          icon: Icon(Icons.search, color: Colors.white.withAlpha(128), size: 22),
-                          splashRadius: 22,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: _searching ? _buildSearchBar() : _buildTitleBar(),
                 ),
               ),
               Container(color: const Color(0xFF141414), height: 0.5),
@@ -251,7 +242,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
       ),
       body: _loaded
-          ? (_books.isEmpty ? _buildEmptyState() : _buildGrid())
+          ? (_books.isEmpty ? _buildEmptyState() : _filteredBooks.isEmpty ? _buildEmptyState() : _buildGrid())
           : const Center(
               child: CircularProgressIndicator(
                 strokeWidth: 2,
@@ -268,15 +259,87 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
+  Widget _buildTitleBar() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              'Library',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: IconButton(
+            onPressed: () => setState(() => _searching = true),
+            icon: Icon(Icons.search, color: Colors.white.withAlpha(128), size: 22),
+            splashRadius: 22,
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _searchController,
+            autofocus: true,
+            style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
+            cursorColor: Colors.white,
+            decoration: InputDecoration(
+              hintText: 'Search by title or author',
+              hintStyle: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 14),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+            ),
+            onChanged: (v) => setState(() => _query = v),
+          ),
+        ),
+        IconButton(
+          onPressed: () {
+            _searchController.clear();
+            setState(() {
+              _query = '';
+              _searching = false;
+            });
+          },
+          icon: const Icon(Icons.close, color: Colors.white, size: 20),
+          splashRadius: 20,
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
+    );
+  }
+
   Widget _buildEmptyState() {
+    final isSearching = _query.isNotEmpty;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.menu_book_rounded, size: 48, color: Colors.white.withAlpha(20)),
+          Icon(
+            isSearching ? Icons.search_off : Icons.menu_book_rounded,
+            size: 48,
+            color: Colors.white.withAlpha(20),
+          ),
           const SizedBox(height: 16),
           Text(
-            'no books yet',
+            isSearching ? 'no results for "$_query"' : 'no books yet',
             style: GoogleFonts.inter(
               color: const Color(0xFF444444),
               fontSize: 15,
@@ -285,7 +348,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'tap + to add from your device',
+            isSearching ? 'try a different search' : 'tap + to add from your device',
             style: GoogleFonts.inter(
               color: const Color(0xFF333333),
               fontSize: 13,
@@ -298,6 +361,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildGrid() {
+    final books = _filteredBooks;
     return GridView.builder(
       padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -306,13 +370,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
         crossAxisSpacing: 8,
         childAspectRatio: 0.56,
       ),
-      itemCount: _books.length,
+      itemCount: books.length,
       itemBuilder: (context, index) {
+        final book = books[index];
+        final bookIndex = _books.indexOf(book);
         return BookCard(
-          book: _books[index],
-          onEdit: () => _editBook(index),
-          onRefreshCover: () => _refreshCover(index),
-          onDelete: () => _deleteBook(index),
+          book: book,
+          onEdit: () => _editBook(bookIndex),
+          onRefreshCover: () => _refreshCover(bookIndex),
+          onDelete: () => _deleteBook(bookIndex),
         );
       },
     );
