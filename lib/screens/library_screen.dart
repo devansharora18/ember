@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/book.dart';
+import '../services/epub_parser.dart';
 import '../widgets/book_card.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -25,14 +26,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     setState(() {
       for (final file in result.files) {
-        final name = file.name;
-        final dotIndex = name.lastIndexOf('.');
-        final title = dotIndex > 0 ? name.substring(0, dotIndex) : name;
+        final path = file.path;
+        if (path == null) continue;
+
+        final meta = EpubParser.parse(path);
 
         _books.add(Book(
-          title: title,
-          author: 'Unknown',
-          filePath: file.path ?? '',
+          title: meta.title,
+          author: meta.author,
+          filePath: path,
+          coverBytes: meta.coverBytes,
         ));
       }
     });

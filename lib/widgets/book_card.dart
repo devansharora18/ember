@@ -25,13 +25,18 @@ class BookCard extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 color: const Color(0xFF111111),
-                child: Center(
-                  child: Icon(
-                    Icons.menu_book_rounded,
-                    size: 32,
-                    color: Colors.white.withAlpha(40),
-                  ),
-                ),
+                child: book.coverBytes != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.zero,
+                        child: Image.memory(
+                          book.coverBytes!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (_, _, _) => _placeholderIcon(),
+                        ),
+                      )
+                    : _placeholderIcon(),
               ),
             ),
             Padding(
@@ -65,6 +70,16 @@ class BookCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _placeholderIcon() {
+    return Center(
+      child: Icon(
+        Icons.menu_book_rounded,
+        size: 32,
+        color: Colors.white.withAlpha(40),
       ),
     );
   }
