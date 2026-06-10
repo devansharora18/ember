@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/book.dart';
+import '../services/book_storage.dart';
 import '../services/epub_parser.dart';
 import '../widgets/book_card.dart';
 
@@ -14,6 +15,22 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   final List<Book> _books = [];
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBooks();
+  }
+
+  Future<void> _loadBooks() async {
+    final books = await BookStorage.loadBooks();
+    if (!mounted) return;
+    setState(() {
+      _books.addAll(books);
+      _loaded = true;
+    });
+  }
 
   Future<void> _addBooks() async {
     final result = await FilePicker.platform.pickFiles(
@@ -39,6 +56,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ));
       }
     });
+
+    BookStorage.saveBooks(_books);
   }
 
   @override
@@ -90,7 +109,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ),
       ),
-      body: _books.isEmpty ? _buildEmptyState() : _buildGrid(),
+      body: _loaded
+          ? (_books.isEmpty ? _buildEmptyState() : _buildGrid())
+          : const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(Color(0xFF333333)),
+              ),
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addBooks,
         backgroundColor: Colors.white,
