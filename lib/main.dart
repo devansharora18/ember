@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/library_screen.dart';
 
 void main() {
-  runApp(const EmberApp());
+  runApp(const ProviderScope(child: EmberApp()));
 }
 
 class EmberApp extends StatelessWidget {

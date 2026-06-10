@@ -1,69 +1,28 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/book.dart';
-import '../services/book_storage.dart';
-import '../services/epub_parser.dart';
+import '../providers/book_list_provider.dart';
 import '../widgets/book_card.dart';
 
-class LibraryScreen extends StatefulWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  State<LibraryScreen> createState() => _LibraryScreenState();
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends State<LibraryScreen> {
-  final List<Book> _books = [];
-  bool _loaded = false;
-  bool _searching = false;
-  String _query = '';
-  int _columns = 3;
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   final _searchController = TextEditingController();
-
   static const _columnOptions = [3, 4, 2];
   static const _columnIcons = [Icons.grid_view_rounded, Icons.apps_rounded, Icons.space_dashboard_rounded];
-
-  void _cycleLayout() {
-    setState(() {
-      final idx = _columnOptions.indexOf(_columns);
-      _columns = _columnOptions[(idx + 1) % _columnOptions.length];
-    });
-    BookStorage.saveAll(_books, _columns);
-  }
-
-  IconData get _layoutIcon => _columnIcons[_columnOptions.indexOf(_columns)];
-
-  List<Book> get _filteredBooks {
-    if (_query.isEmpty) return _books;
-    final q = _query.toLowerCase();
-    return _books.where((b) =>
-      b.title.toLowerCase().contains(q) ||
-      b.author.toLowerCase().contains(q)
-    ).toList();
-  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadBooks();
-  }
-
-  Future<void> _loadBooks() async {
-    final data = await BookStorage.loadAll();
-    if (!mounted) return;
-    setState(() {
-      _books.addAll(data.books);
-      _columns = data.columns;
-      _loaded = true;
-    });
   }
 
   Future<void> _addBooks() async {
@@ -72,30 +31,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
       type: FileType.custom,
       allowedExtensions: ['pdf', 'epub', 'mobi', 'txt', 'cbz', 'cbr'],
     );
-
     if (result == null || result.files.isEmpty) return;
-
-    setState(() {
-      for (final file in result.files) {
-        final path = file.path;
-        if (path == null) continue;
-
-        final meta = EpubParser.parse(path);
-
-        _books.add(Book(
-          title: meta.title,
-          author: meta.author,
-          filePath: path,
-          coverBytes: meta.coverBytes,
-        ));
-      }
-    });
-
-    BookStorage.saveAll(_books, _columns);
+    final paths = result.files.map((f) => f.path).whereType<String>().toList();
+    if (paths.isNotEmpty) {
+      ref.read(bookListProvider.notifier).addBooks(paths);
+    }
   }
 
   Future<void> _editBook(int index) async {
-    final book = _books[index];
+    final books = ref.read(bookListProvider);
+    final book = books[index];
     final titleController = TextEditingController(text: book.title);
     final authorController = TextEditingController(text: book.author);
     Uint8List? newCover = book.coverBytes;
@@ -179,32 +124,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
 
     if (result == true && mounted) {
-      setState(() {
-        book.title = titleController.text.trim().isEmpty ? book.title : titleController.text.trim();
-        book.author = authorController.text.trim().isEmpty ? book.author : authorController.text.trim();
-        if (newCover != book.coverBytes) {
-          book.coverBytes = newCover;
-        }
-      });
-      BookStorage.saveAll(_books, _columns);
-    }
-  }
-
-  Future<void> _refreshCover(int index) async {
-    final book = _books[index];
-    if (!book.filePath.toLowerCase().endsWith('.epub')) return;
-
-    final meta = EpubParser.parse(book.filePath);
-    if (meta.coverBytes != null && mounted) {
-      setState(() {
-        book.coverBytes = meta.coverBytes;
-      });
-      BookStorage.saveAll(_books, _columns);
+      final title = titleController.text.trim();
+      final author = authorController.text.trim();
+      ref.read(bookListProvider.notifier).editBook(
+        index,
+        title: title.isEmpty ? null : title,
+        author: author.isEmpty ? null : author,
+        coverBytes: newCover != book.coverBytes ? newCover : null,
+      );
     }
   }
 
   Future<void> _deleteBook(int index) async {
-    final book = _books[index];
+    final books = ref.read(bookListProvider);
+    final book = books[index];
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -227,15 +160,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ],
       ),
     );
-
     if (confirmed == true && mounted) {
-      setState(() => _books.removeAt(index));
-      BookStorage.saveAll(_books, _columns);
+      ref.read(bookListProvider.notifier).deleteBook(index);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final books = ref.watch(filteredBooksProvider);
+    final columns = ref.watch(columnsProvider);
+    final searching = ref.watch(searchingProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
       appBar: PreferredSize(
@@ -248,7 +183,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: SizedBox(
                   height: 63,
-                  child: _searching ? _buildSearchBar() : _buildTitleBar(),
+                  child: searching ? _buildSearchBar() : _buildTitleBar(columns),
                 ),
               ),
               Container(color: const Color(0xFF141414), height: 0.5),
@@ -256,14 +191,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ),
       ),
-      body: _loaded
-          ? (_books.isEmpty ? _buildEmptyState() : _filteredBooks.isEmpty ? _buildEmptyState() : _buildGrid())
-          : const Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Color(0xFF333333)),
-              ),
-            ),
+      body: books.isEmpty
+          ? _buildEmptyState()
+          : _buildGrid(books, columns),
       floatingActionButton: FloatingActionButton(
         onPressed: _addBooks,
         backgroundColor: Colors.white,
@@ -274,7 +204,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _buildTitleBar() {
+  Widget _buildTitleBar(int columns) {
+    final idx = _columnOptions.indexOf(columns);
+    final icon = _columnIcons[idx.clamp(0, _columnIcons.length - 1)];
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -283,12 +216,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             padding: const EdgeInsets.only(bottom: 10),
             child: Text(
               'Library',
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1,
-              ),
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: 1),
             ),
           ),
         ),
@@ -297,14 +225,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
           child: Row(
             children: [
               IconButton(
-                onPressed: _cycleLayout,
-                icon: Icon(_layoutIcon, color: Colors.white.withAlpha(128), size: 20),
+                onPressed: () {
+                  final newIdx = (idx + 1) % _columnOptions.length;
+                  ref.read(columnsProvider.notifier).state = _columnOptions[newIdx];
+                  ref.read(bookListProvider.notifier).saveLayout();
+                },
+                icon: Icon(icon, color: Colors.white.withAlpha(128), size: 20),
                 splashRadius: 22,
                 visualDensity: VisualDensity.compact,
-                tooltip: '$_columns columns',
+                tooltip: '$columns columns',
               ),
               IconButton(
-                onPressed: () => setState(() => _searching = true),
+                onPressed: () => ref.read(searchingProvider.notifier).state = true,
                 icon: Icon(Icons.search, color: Colors.white.withAlpha(128), size: 22),
                 splashRadius: 22,
                 visualDensity: VisualDensity.compact,
@@ -333,16 +265,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(vertical: 8),
             ),
-            onChanged: (v) => setState(() => _query = v),
+            onChanged: (v) => ref.read(searchQueryProvider.notifier).state = v,
           ),
         ),
         IconButton(
           onPressed: () {
             _searchController.clear();
-            setState(() {
-              _query = '';
-              _searching = false;
-            });
+            ref.read(searchQueryProvider.notifier).state = '';
+            ref.read(searchingProvider.notifier).state = false;
           },
           icon: const Icon(Icons.close, color: Colors.white, size: 20),
           splashRadius: 20,
@@ -353,45 +283,34 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildEmptyState() {
-    final isSearching = _query.isNotEmpty;
+    final query = ref.watch(searchQueryProvider);
+    final isSearching = query.isNotEmpty;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            isSearching ? Icons.search_off : Icons.menu_book_rounded,
-            size: 48,
-            color: Colors.white.withAlpha(20),
-          ),
+          Icon(isSearching ? Icons.search_off : Icons.menu_book_rounded, size: 48, color: Colors.white.withAlpha(20)),
           const SizedBox(height: 16),
           Text(
-            isSearching ? 'no results for "$_query"' : 'no books yet',
-            style: GoogleFonts.inter(
-              color: const Color(0xFF444444),
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-            ),
+            isSearching ? 'no results for "$query"' : 'no books yet',
+            style: GoogleFonts.inter(color: const Color(0xFF444444), fontSize: 15, fontWeight: FontWeight.w400),
           ),
           const SizedBox(height: 8),
           Text(
             isSearching ? 'try a different search' : 'tap + to add from your device',
-            style: GoogleFonts.inter(
-              color: const Color(0xFF333333),
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-            ),
+            style: GoogleFonts.inter(color: const Color(0xFF333333), fontSize: 13, fontWeight: FontWeight.w400),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGrid() {
-    final books = _filteredBooks;
+  Widget _buildGrid(List<Book> books, int columns) {
+    final allBooks = ref.watch(bookListProvider);
     return GridView.builder(
       padding: const EdgeInsets.all(12),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: _columns,
+        crossAxisCount: columns,
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
         childAspectRatio: 0.56,
@@ -399,11 +318,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
       itemCount: books.length,
       itemBuilder: (context, index) {
         final book = books[index];
-        final bookIndex = _books.indexOf(book);
+        final bookIndex = allBooks.indexOf(book);
         return BookCard(
           book: book,
           onEdit: () => _editBook(bookIndex),
-          onRefreshCover: () => _refreshCover(bookIndex),
+          onRefreshCover: () => ref.read(bookListProvider.notifier).refreshCover(bookIndex),
           onDelete: () => _deleteBook(bookIndex),
         );
       },
