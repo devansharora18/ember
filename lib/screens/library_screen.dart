@@ -19,7 +19,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool _loaded = false;
   bool _searching = false;
   String _query = '';
+  int _columns = 3;
   final _searchController = TextEditingController();
+
+  static const _columnOptions = [3, 4, 2];
+  static const _columnIcons = [Icons.grid_view_rounded, Icons.apps_rounded, Icons.space_dashboard_rounded];
+
+  void _cycleLayout() {
+    setState(() {
+      final idx = _columnOptions.indexOf(_columns);
+      _columns = _columnOptions[(idx + 1) % _columnOptions.length];
+    });
+  }
+
+  IconData get _layoutIcon => _columnIcons[_columnOptions.indexOf(_columns)];
 
   List<Book> get _filteredBooks {
     if (_query.isEmpty) return _books;
@@ -279,11 +292,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
-          child: IconButton(
-            onPressed: () => setState(() => _searching = true),
-            icon: Icon(Icons.search, color: Colors.white.withAlpha(128), size: 22),
-            splashRadius: 22,
-            visualDensity: VisualDensity.compact,
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: _cycleLayout,
+                icon: Icon(_layoutIcon, color: Colors.white.withAlpha(128), size: 20),
+                splashRadius: 22,
+                visualDensity: VisualDensity.compact,
+                tooltip: '$_columns columns',
+              ),
+              IconButton(
+                onPressed: () => setState(() => _searching = true),
+                icon: Icon(Icons.search, color: Colors.white.withAlpha(128), size: 22),
+                splashRadius: 22,
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
           ),
         ),
       ],
@@ -364,8 +388,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final books = _filteredBooks;
     return GridView.builder(
       padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: _columns,
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
         childAspectRatio: 0.56,
