@@ -30,6 +30,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       final idx = _columnOptions.indexOf(_columns);
       _columns = _columnOptions[(idx + 1) % _columnOptions.length];
     });
+    BookStorage.saveAll(_books, _columns);
   }
 
   IconData get _layoutIcon => _columnIcons[_columnOptions.indexOf(_columns)];
@@ -56,10 +57,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _loadBooks() async {
-    final books = await BookStorage.loadBooks();
+    final data = await BookStorage.loadAll();
     if (!mounted) return;
     setState(() {
-      _books.addAll(books);
+      _books.addAll(data.books);
+      _columns = data.columns;
       _loaded = true;
     });
   }
@@ -89,7 +91,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       }
     });
 
-    BookStorage.saveBooks(_books);
+    BookStorage.saveAll(_books, _columns);
   }
 
   Future<void> _editBook(int index) async {
@@ -184,7 +186,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           book.coverBytes = newCover;
         }
       });
-      BookStorage.saveBooks(_books);
+      BookStorage.saveAll(_books, _columns);
     }
   }
 
@@ -197,7 +199,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       setState(() {
         book.coverBytes = meta.coverBytes;
       });
-      BookStorage.saveBooks(_books);
+      BookStorage.saveAll(_books, _columns);
     }
   }
 
@@ -228,7 +230,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     if (confirmed == true && mounted) {
       setState(() => _books.removeAt(index));
-      BookStorage.saveBooks(_books);
+      BookStorage.saveAll(_books, _columns);
     }
   }
 

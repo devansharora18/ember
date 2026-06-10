@@ -17,14 +17,24 @@ class BookStorage {
     return base64Url.encode(bytes).replaceAll('=', '');
   }
 
-  static Future<List<Book>> loadBooks() async {
+  static Future<({List<Book> books, int columns})> loadAll() async {
     try {
       final dir = await _dir();
       final file = File('${dir.path}/books.json');
-      if (!await file.exists()) return [];
-      final json = jsonDecode(await file.readAsString()) as List;
+      if (!await file.exists()) return (books: <Book>[], columns: 3);
+      final raw = jsonDecode(await file.readAsString());
+      final List jsonList;
+      final int columns;
+      if (raw is List) {
+        jsonList = raw;
+        columns = 3;
+      } else {
+        final data = raw as Map<String, dynamic>;
+        jsonList = data['books'] as List? ?? [];
+        columns = data['columns'] as int? ?? 3;
+      }
       final books = <Book>[];
-      for (final map in json) {
+      for (final map in jsonList) {
         final b = map as Map<String, dynamic>;
         final coverKey = b['coverKey'] as String?;
         Uint8List? coverBytes;
@@ -41,18 +51,18 @@ class BookStorage {
           coverBytes: coverBytes,
         ));
       }
-      return books;
+      return (books: books, columns: columns);
     } catch (_) {
-      return [];
+      return (books: <Book>[], columns: 3);
     }
   }
 
-  static Future<void> saveBooks(List<Book> books) async {
+  static Future<void> saveAll(List<Book> books, int columns) async {
     final dir = await _dir();
     final coversDir = Directory('${dir.path}/covers');
     if (!await coversDir.exists()) await coversDir.create(recursive: true);
 
-    final json = <Map<String, dynamic>>[];
+    final jsonList = <Map<String, dynamic>>[];
     for (final book in books) {
       String? coverKey;
       if (book.coverBytes != null) {
@@ -62,7 +72,7 @@ class BookStorage {
           await coverFile.writeAsBytes(book.coverBytes!);
         }
       }
-      json.add({
+      jsonList.add({
         'title': book.title,
         'author': book.author,
         'filePath': book.filePath,
@@ -70,6 +80,9 @@ class BookStorage {
       });
     }
     final file = File('${dir.path}/books.json');
-    await file.writeAsString(jsonEncode(json));
+    await file.writeAsString(jsonEncode({
+      'books': jsonList,
+      'columns': columns,
+    }));
   }
 }
