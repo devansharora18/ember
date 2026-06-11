@@ -49,6 +49,8 @@ class BookStorage {
           author: b['author'] as String,
           filePath: b['filePath'] as String,
           coverBytes: coverBytes,
+          progress: (b['progress'] as num?)?.toDouble() ?? 0.0,
+          lastOpened: b['lastOpened'] != null ? DateTime.tryParse(b['lastOpened'] as String) : null,
         ));
       }
       return (books: books, columns: columns);
@@ -77,6 +79,8 @@ class BookStorage {
         'author': book.author,
         'filePath': book.filePath,
         'coverKey': coverKey,
+        'progress': book.progress,
+        if (book.lastOpened != null) 'lastOpened': book.lastOpened!.toIso8601String(),
       });
     }
     final file = File('${dir.path}/books.json');

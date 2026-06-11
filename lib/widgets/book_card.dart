@@ -130,34 +130,36 @@ class BookCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: EdgeInsets.all(8 * s),
+              padding: EdgeInsets.fromLTRB(8 * s, 8 * s, 8 * s, book.progress > 0 ? 4 * s : 8 * s),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     book.title,
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 12 * s,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 12 * s, fontWeight: FontWeight.w500),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 2 * s),
                   Text(
                     book.author,
-                    style: GoogleFonts.inter(
-                      color: const Color(0xFF666666),
-                      fontSize: 11 * s,
-                      fontWeight: FontWeight.w400,
-                    ),
+                    style: GoogleFonts.inter(color: const Color(0xFF666666), fontSize: 11 * s, fontWeight: FontWeight.w400),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
+            if (book.progress > 0)
+              ClipRRect(
+                borderRadius: BorderRadius.zero,
+                child: LinearProgressIndicator(
+                  value: book.progress.clamp(0.0, 1.0),
+                  backgroundColor: const Color(0xFF1A1A1A),
+                  valueColor: const AlwaysStoppedAnimation(Color(0xFF333333)),
+                  minHeight: 2 * s,
+                ),
+              ),
           ],
         ),
       ),
@@ -166,11 +168,7 @@ class BookCard extends StatelessWidget {
 
   Widget _placeholderIcon(double s) {
     return Center(
-      child: Icon(
-        Icons.menu_book_rounded,
-        size: 32 * s,
-        color: Colors.white.withAlpha(40),
-      ),
+      child: Icon(Icons.menu_book_rounded, size: 32 * s, color: Colors.white.withAlpha(40)),
     );
   }
 }

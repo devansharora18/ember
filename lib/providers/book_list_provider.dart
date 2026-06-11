@@ -32,10 +32,10 @@ class BookListNotifier extends Notifier<List<Book>> {
     _save();
   }
 
-  void editBook(int index, {String? title, String? author, Uint8List? coverBytes}) {
+  void editBook(int index, {String? title, String? author, Uint8List? coverBytes, double? progress}) {
     state = [
       for (var i = 0; i < state.length; i++)
-        if (i == index) state[i].copyWith(title: title, author: author, coverBytes: coverBytes) else state[i],
+        if (i == index) state[i].copyWith(title: title, author: author, coverBytes: coverBytes, progress: progress) else state[i],
     ];
     _save();
   }
@@ -58,6 +58,16 @@ class BookListNotifier extends Notifier<List<Book>> {
     _save();
   }
 
+  void touchBook(String filePath) {
+    final idx = state.indexWhere((b) => b.filePath == filePath);
+    if (idx == -1) return;
+    state = [
+      for (var i = 0; i < state.length; i++)
+        if (i == idx) state[i].copyWith(lastOpened: DateTime.now()) else state[i],
+    ];
+    _save();
+  }
+
   void _save() {
     BookStorage.saveAll(state, ref.read(columnsProvider));
   }
@@ -76,9 +86,20 @@ final searchingProvider = StateProvider<bool>((ref) => false);
 final filteredBooksProvider = Provider<List<Book>>((ref) {
   final books = ref.watch(bookListProvider);
   final query = ref.watch(searchQueryProvider).toLowerCase();
-  if (query.isEmpty) return books;
-  return books.where((b) =>
-    b.title.toLowerCase().contains(query) ||
-    b.author.toLowerCase().contains(query)
-  ).toList();
+  List<Book> result;
+  if (query.isEmpty) {
+    result = List.of(books);
+  } else {
+    result = books.where((b) =>
+      b.title.toLowerCase().contains(query) ||
+      b.author.toLowerCase().contains(query)
+    ).toList();
+  }
+  result.sort((a, b) {
+    if (a.lastOpened == null && b.lastOpened == null) return 0;
+    if (a.lastOpened == null) return 1;
+    if (b.lastOpened == null) return -1;
+    return b.lastOpened!.compareTo(a.lastOpened!);
+  });
+  return result;
 });

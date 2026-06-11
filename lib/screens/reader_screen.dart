@@ -1,20 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/book.dart';
+import '../providers/book_list_provider.dart';
 import '../services/book_storage.dart';
 import '../services/epub_parser.dart';
 
-class ReaderScreen extends StatefulWidget {
+class ReaderScreen extends ConsumerStatefulWidget {
   final Book book;
 
   const ReaderScreen({super.key, required this.book});
 
   @override
-  State<ReaderScreen> createState() => _ReaderScreenState();
+  ConsumerState<ReaderScreen> createState() => _ReaderScreenState();
 }
 
-class _ReaderScreenState extends State<ReaderScreen> {
+class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   List<EpubChapter> _chapters = [];
   bool _loading = true;
   double _fontSize = 16;
@@ -61,6 +63,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   @override
   void dispose() {
+    if (_totalChars > 0) {
+      final progress = _position / _totalChars;
+      final idx = ref.read(bookListProvider).indexWhere((b) => b.filePath == widget.book.filePath);
+      if (idx != -1) {
+        ref.read(bookListProvider.notifier).editBook(idx, progress: progress);
+      }
+    }
     _pageController.dispose();
     _hideTimer?.cancel();
     super.dispose();
@@ -124,6 +133,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
       final coverOffset = widget.book.coverBytes != null ? 1 : 0;
       _pageController.jumpToPage(page + coverOffset);
     });
+
+    ref.read(bookListProvider.notifier).touchBook(widget.book.filePath);
 
     _scheduleHide();
   }
@@ -298,8 +309,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   int _chapterPosition(int chapterIndex) {
-    if (chapterIndex < _chapterStarts.length)
+    if (chapterIndex < _chapterStarts.length) {
       return _chapterStarts[chapterIndex];
+    }
     return _totalChars;
   }
 
