@@ -16,11 +16,45 @@ class LibraryScreen extends ConsumerStatefulWidget {
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   final _searchController = TextEditingController();
+  double _pinchAccum = 0.0;
+  bool _isPinching = false;
   static const _columnOptions = [3, 4, 2];
   static const _columnIcons = [Icons.grid_view_rounded, Icons.apps_rounded, Icons.space_dashboard_rounded];
   static const _scaleMap = {2: 1.15, 3: 1.0, 4: 0.85};
 
   double _scale(int columns) => _scaleMap[columns] ?? 1.0;
+
+  void _onPinchStart(ScaleStartDetails d) {
+    _isPinching = d.pointerCount >= 2;
+    _pinchAccum = 0.0;
+  }
+
+  void _onPinchUpdate(ScaleUpdateDetails d) {
+    if (!_isPinching) return;
+    _pinchAccum += d.scale - 1.0;
+    if (_pinchAccum > 0.5) {
+      _pinchAccum = 0.0;
+      final cols = ref.read(columnsProvider);
+      final idx = _columnOptions.indexOf(cols);
+      if (cols > 2) {
+        ref.read(columnsProvider.notifier).state = _columnOptions[(idx - 1).clamp(0, _columnOptions.length - 1)];
+        ref.read(bookListProvider.notifier).saveLayout();
+      }
+    } else if (_pinchAccum < -0.5) {
+      _pinchAccum = 0.0;
+      final cols = ref.read(columnsProvider);
+      final idx = _columnOptions.indexOf(cols);
+      if (cols < 4) {
+        ref.read(columnsProvider.notifier).state = _columnOptions[(idx + 1).clamp(0, _columnOptions.length - 1)];
+        ref.read(bookListProvider.notifier).saveLayout();
+      }
+    }
+  }
+
+  void _onPinchEnd(ScaleEndDetails _) {
+    _isPinching = false;
+    _pinchAccum = 0.0;
+  }
 
   @override
   void dispose() {
@@ -196,9 +230,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ),
         ),
       ),
-      body: books.isEmpty
-          ? _buildEmptyState(s)
-          : _buildGrid(books, columns, s),
+      body: GestureDetector(
+        onScaleStart: _onPinchStart,
+        onScaleUpdate: _onPinchUpdate,
+        onScaleEnd: _onPinchEnd,
+        child: books.isEmpty
+            ? _buildEmptyState(s)
+            : _buildGrid(books, columns, s),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addBooks,
         backgroundColor: Colors.white,
