@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../services/book_storage.dart';
 
 class RsvpScreen extends StatefulWidget {
   final String fullText;
@@ -26,17 +27,16 @@ class RsvpScreen extends StatefulWidget {
 
 class _RsvpScreenState extends State<RsvpScreen> {
   int _index = 0;
-  int _wpm = 300;
+  int _wpm = 200;
   bool _playing = false;
   Timer? _timer;
   bool _controlsVisible = true;
   Timer? _hideTimer;
   int _sentencesSincePause = 0;
-
   late final List<_Word> _words;
 
   static const _minWpm = 50;
-  static const _maxWpm = 1000;
+  static const _maxWpm = 600;
   static const _autoHideDelay = Duration(seconds: 3);
 
   @override
@@ -44,7 +44,15 @@ class _RsvpScreenState extends State<RsvpScreen> {
     super.initState();
     _words = _tokenize(widget.fullText);
     _index = _findWordIndex(widget.startPosition);
+    _loadWpm();
     _scheduleHide();
+  }
+
+  Future<void> _loadWpm() async {
+    final saved = await BookStorage.loadRsvpWpm();
+    if (saved != null && mounted) {
+      setState(() => _wpm = saved.clamp(_minWpm, _maxWpm));
+    }
   }
 
   @override
@@ -132,6 +140,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
 
   void _adjustWpm(int delta) {
     setState(() => _wpm = (_wpm + delta).clamp(_minWpm, _maxWpm));
+    BookStorage.saveRsvpWpm(_wpm);
     if (_playing) {
       _timer?.cancel();
       _tick();

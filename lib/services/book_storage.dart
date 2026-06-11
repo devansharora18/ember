@@ -169,4 +169,23 @@ class BookStorage {
       return null;
     }
   }
+
+  static Future<void> saveRsvpWpm(int wpm) async {
+    try {
+      final dir = await _dir();
+      final file = File('${dir.path}/settings_rsvp_wpm');
+      await file.writeAsString(wpm.toString());
+    } catch (_) {}
+  }
+
+  static Future<int?> loadRsvpWpm() async {
+    try {
+      final dir = await _dir();
+      final file = File('${dir.path}/settings_rsvp_wpm');
+      if (!await file.exists()) return null;
+      return int.tryParse(await file.readAsString());
+    } catch (_) {
+      return null;
+    }
+  }
 }
