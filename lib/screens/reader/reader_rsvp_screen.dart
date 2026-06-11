@@ -33,6 +33,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   bool _controlsVisible = true;
   Timer? _hideTimer;
   int _sentencesSincePause = 0;
+  bool _isFirstWordOfSentence = true;
   late final List<_Word> _words;
 
   static const _minWpm = 50;
@@ -44,6 +45,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
     super.initState();
     _words = _tokenize(widget.fullText);
     _index = _findWordIndex(widget.startPosition);
+    _isFirstWordOfSentence = _index == 0 || _isWordSentenceEnd(_words[_index - 1].text);
     _loadWpm();
     _scheduleHide();
   }
@@ -105,24 +107,81 @@ class _RsvpScreenState extends State<RsvpScreen> {
       setState(() => _playing = false);
       return;
     }
-    final delay = Duration(milliseconds: (60000 / _wpm).round());
-    _timer = Timer(delay, () {
+    final word = _words[_index].text;
+    final ms = _getWordDuration(word);
+    _timer = Timer(Duration(milliseconds: ms.round()), () {
       if (!mounted || !_playing) return;
       setState(() {
         if (_index < _words.length - 1) {
           _index++;
-          final word = _words[_index].text;
-          if (word.endsWith('.') || word.endsWith('!') || word.endsWith('?')) {
+          final nextWord = _words[_index].text;
+          final isSentenceEnd = _isWordSentenceEnd(nextWord);
+          _isFirstWordOfSentence = isSentenceEnd;
+          if (isSentenceEnd) {
             _sentencesSincePause++;
           }
         }
       });
       if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords) {
-        setState(() { _playing = false; _sentencesSincePause = 0; });
+        setState(() { _playing = false; _sentencesSincePause = 0; _isFirstWordOfSentence = true; });
         return;
       }
       _tick();
     });
+  }
+
+  double _getWordDuration(String word) {
+    final baseMs = 60000 / _wpm;
+    var multiplier = 1.0;
+
+    // 1. Length — base is 5 chars
+    final len = word.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
+    if (len > 5) {
+      multiplier += (len - 5) * 0.1;
+    }
+
+    // 2. Syllables
+    final syllables = _countSyllables(word);
+    if (syllables > 2) {
+      multiplier += (syllables - 2) * 0.15;
+    }
+
+    // 3. Punctuation pauses
+    if (_isWordSentenceEnd(word)) {
+      multiplier += 0.8;
+    } else if (word.endsWith(',') || word.endsWith(';')) {
+      multiplier += 0.3;
+    } else if (word.endsWith(':')) {
+      multiplier += 0.4;
+    }
+
+    // 4. Numbers
+    if (RegExp(r'\d').hasMatch(word)) {
+      multiplier += 0.5;
+    }
+
+    // 5. Hyphenated compounds
+    if (word.contains('-')) {
+      multiplier += 0.4;
+    }
+
+    // 6. First word of sentence
+    if (_isFirstWordOfSentence) {
+      multiplier += 0.2;
+    }
+
+    multiplier = multiplier.clamp(1.0, 4.0);
+    return baseMs * multiplier;
+  }
+
+  int _countSyllables(String word) {
+    final w = word.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+    if (w.isEmpty) return 1;
+
+    final vowelGroups = RegExp(r'[aeiouy]+').allMatches(w).length;
+    var count = vowelGroups;
+    if (w.endsWith('e') && w.length > 2) count--;
+    return count < 1 ? 1 : count;
   }
 
   void _skip(int count) {
@@ -131,11 +190,17 @@ class _RsvpScreenState extends State<RsvpScreen> {
     setState(() {
       _playing = false;
       _index = (_index + count).clamp(0, _words.length - 1);
+      // Recalculate first-word flag for the new position
+      _isFirstWordOfSentence = _index == 0 || _isWordSentenceEnd(_words[_index - 1].text);
     });
     if (wasPlaying) {
       setState(() => _playing = true);
       _tick();
     }
+  }
+
+  bool _isWordSentenceEnd(String word) {
+    return word.endsWith('.') || word.endsWith('!') || word.endsWith('?');
   }
 
   void _adjustWpm(int delta) {
