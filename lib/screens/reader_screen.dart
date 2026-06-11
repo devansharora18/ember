@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/book.dart';
 import '../providers/book_list_provider.dart';
 import '../services/book_storage.dart';
+import '../services/dictionary_service.dart';
 import '../services/epub_parser.dart';
 
 class ReaderScreen extends ConsumerStatefulWidget {
@@ -50,32 +51,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     if (page == null) return;
     final coverPageCount = widget.book.coverBytes != null ? 1 : 0;
     final rounded = page.round();
-    final textPage = (rounded - coverPageCount).clamp(
-      0,
-      _pageStarts.length - 1,
-    );
-    if (textPage != _currentPage &&
-        textPage >= 0 &&
-        textPage < _pageStarts.length) {
+    final textPage = (rounded - coverPageCount).clamp(0, _pageStarts.length - 1);
+    if (textPage != _currentPage && textPage >= 0 && textPage < _pageStarts.length) {
       setState(() => _currentPage = textPage);
     }
-  }
-
-  void _saveProgress() {
-    if (_totalChars <= 0) return;
-    final progress = _position / _totalChars;
-    final idx = ref.read(bookListProvider).indexWhere((b) => b.filePath == widget.book.filePath);
-    if (idx != -1) {
-      ref.read(bookListProvider.notifier).editBook(idx, progress: progress);
-    }
-  }
-
-  @override
-  void dispose() {
-    _saveProgress();
-    _pageController.dispose();
-    _hideTimer?.cancel();
-    super.dispose();
   }
 
   void _scheduleHide() {
@@ -86,9 +65,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   void _toggleControls() {
-    setState(() {
-      _controlsVisible = !_controlsVisible;
-    });
+    setState(() => _controlsVisible = !_controlsVisible);
     if (_controlsVisible) {
       _scheduleHide();
     } else {
@@ -97,9 +74,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   Future<void> _loadContent() async {
-    final chapters = await Future(
-      () => EpubParser.extractChapters(widget.book.filePath),
-    );
+    final chapters = await Future(() => EpubParser.extractChapters(widget.book.filePath));
     final savedPos = await BookStorage.loadPosition(widget.book.filePath);
     final savedFontSize = await BookStorage.loadFontSize(widget.book.filePath);
     if (!mounted) return;
@@ -138,7 +113,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     });
 
     ref.read(bookListProvider.notifier).touchBook(widget.book.filePath);
-
     _scheduleHide();
   }
 
@@ -147,19 +121,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final padding = MediaQuery.of(context).padding;
     final textPadding = const EdgeInsets.fromLTRB(24, 48, 24, 4);
     final width = size.width - textPadding.left - textPadding.right;
-    final height =
-        size.height -
-        padding.top -
-        padding.bottom -
-        textPadding.top -
-        textPadding.bottom;
+    final height = size.height - padding.top - padding.bottom - textPadding.top - textPadding.bottom;
     if (width <= 0 || height <= 0) return 1000;
 
     final tp = TextPainter(
-      text: TextSpan(
-        text: 'X',
-        style: GoogleFonts.inter(fontSize: _fontSize, height: 1.7),
-      ),
+      text: TextSpan(text: 'X', style: GoogleFonts.inter(fontSize: _fontSize, height: 1.7)),
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: width);
 
@@ -183,14 +149,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       var end = (breaks.last + cpp).clamp(0, _fullText.length);
       if (end < _fullText.length) {
         var adjusted = end;
-        while (adjusted > breaks.last &&
-            adjusted > end - 80 &&
-            _fullText[adjusted] != ' ' &&
-            _fullText[adjusted] != '\n') {
+        while (adjusted > breaks.last && adjusted > end - 80 && _fullText[adjusted] != ' ' && _fullText[adjusted] != '\n') {
           adjusted--;
         }
-        if (adjusted > breaks.last &&
-            (_fullText[adjusted] == ' ' || _fullText[adjusted] == '\n')) {
+        if (adjusted > breaks.last && (_fullText[adjusted] == ' ' || _fullText[adjusted] == '\n')) {
           end = adjusted + 1;
         }
       }
@@ -218,12 +180,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-
       setState(() {
         _currentPage = _findPageForPosition(oldPosition);
         _totalPages = _pageStarts.length - 1;
       });
-
       _pageController.jumpToPage(_currentPage + coverOffset);
     });
   }
@@ -244,22 +204,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       backgroundColor: const Color(0xFF0F0F0F),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       builder: (ctx) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.6,
-        ),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Text(
-                'Contents',
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text('Contents', style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
             ),
             Container(color: const Color(0xFF141414), height: 0.5),
             Expanded(
@@ -267,31 +218,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: _chapters.length,
                 itemBuilder: (_, i) {
-                  final nextPos = i < _chapterStarts.length - 1
-                      ? _chapterStarts[i + 1]
-                      : _totalChars;
-                  final isCurrent =
-                      _position >= _chapterStarts[i] && _position < nextPos;
+                  final nextPos = i < _chapterStarts.length - 1 ? _chapterStarts[i + 1] : _totalChars;
+                  final isCurrent = _position >= _chapterStarts[i] && _position < nextPos;
                   return ListTile(
                     dense: true,
-                    leading: Text(
-                      '${i + 1}',
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFF555555),
-                        fontSize: 13,
-                      ),
-                    ),
+                    leading: Text('${i + 1}', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 13)),
                     title: Text(
                       _chapters[i].title,
-                      style: GoogleFonts.inter(
-                        color: isCurrent
-                            ? Colors.white
-                            : const Color(0xFFAAAAAA),
-                        fontSize: 14,
-                        fontWeight: isCurrent
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
+                      style: GoogleFonts.inter(color: isCurrent ? Colors.white : const Color(0xFFAAAAAA), fontSize: 14, fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -318,6 +252,23 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     return _totalChars;
   }
 
+  void _saveProgress() {
+    if (_totalChars <= 0) return;
+    final progress = _position / _totalChars;
+    final idx = ref.read(bookListProvider).indexWhere((b) => b.filePath == widget.book.filePath);
+    if (idx != -1) {
+      ref.read(bookListProvider.notifier).editBook(idx, progress: progress);
+    }
+  }
+
+  @override
+  void dispose() {
+    _saveProgress();
+    _pageController.dispose();
+    _hideTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final book = widget.book;
@@ -325,23 +276,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Color(0xFF333333)),
-              ),
-            )
+          ? const Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Color(0xFF333333))))
           : _chapters.isEmpty
-          ? Center(
-              child: Text(
-                'No readable content',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF555555),
-                  fontSize: 14,
-                ),
-              ),
-            )
-          : _buildReader(book),
+              ? Center(child: Text('No readable content', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 14)))
+              : _buildReader(book),
     );
   }
 
@@ -376,9 +314,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               }
               final textPageIndex = pageIndex - coverPageCount;
               final start = _pageStarts[textPageIndex];
-              final end = textPageIndex + 1 < _pageStarts.length
-                  ? _pageStarts[textPageIndex + 1]
-                  : _fullText.length;
+              final end = textPageIndex + 1 < _pageStarts.length ? _pageStarts[textPageIndex + 1] : _fullText.length;
               final pageText = _fullText.substring(start, end);
               return _buildTextPage(pageText, padding);
             },
@@ -418,44 +354,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           Expanded(
             child: Text(
               book.title,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.5,
-              ),
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.5),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          IconButton(
-            icon: const Icon(
-              Icons.text_decrease,
-              color: Colors.white,
-              size: 20,
-            ),
-            onPressed: () {
-              _hideTimer?.cancel();
-              _setFontSize(-1);
-              _scheduleHide();
-            },
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.text_increase,
-              color: Colors.white,
-              size: 20,
-            ),
-            onPressed: () {
-              _hideTimer?.cancel();
-              _setFontSize(1);
-              _scheduleHide();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.list, color: Colors.white, size: 20),
-            onPressed: _showToc,
-          ),
+          IconButton(icon: const Icon(Icons.text_decrease, color: Colors.white, size: 20), onPressed: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); }),
+          IconButton(icon: const Icon(Icons.text_increase, color: Colors.white, size: 20), onPressed: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); }),
+          IconButton(icon: const Icon(Icons.list, color: Colors.white, size: 20), onPressed: _showToc),
         ],
       ),
     );
@@ -472,49 +378,25 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              if (coverPageCount > 0 &&
-                  _pageController.hasClients &&
-                  _pageController.page?.round() == 0)
-                Text(
-                  'Cover',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF888888),
-                    fontSize: 11,
-                  ),
-                )
+              if (coverPageCount > 0 && _pageController.hasClients && _pageController.page?.round() == 0)
+                Text('Cover', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 11))
               else ...[
-                Text(
-                  '${_currentPage + 1} / $_totalPages',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF888888),
-                    fontSize: 11,
-                  ),
-                ),
+                Text('${_currentPage + 1} / $_totalPages', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 11)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.zero,
                     child: LinearProgressIndicator(
-                      value: _totalPages > 1
-                          ? (_currentPage / (_totalPages - 1)).clamp(0.0, 1.0)
-                          : 0,
+                      value: _totalPages > 1 ? (_currentPage / (_totalPages - 1)).clamp(0.0, 1.0) : 0,
                       backgroundColor: const Color(0xFF1A1A1A),
-                      valueColor: const AlwaysStoppedAnimation(
-                        Color(0xFF444444),
-                      ),
+                      valueColor: const AlwaysStoppedAnimation(Color(0xFF444444)),
                       minHeight: 2,
                     ),
                   ),
                 ),
               ],
               const Spacer(),
-              Text(
-                '${_fontSize.round()}',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF888888),
-                  fontSize: 11,
-                ),
-              ),
+              Text('${_fontSize.round()}', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 11)),
             ],
           ),
         ),
@@ -536,28 +418,67 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   Widget _buildTextPage(String text, EdgeInsets padding) {
     final isChapterStart = _isChapterStart(text);
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(24, padding.top + 48, 24, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isChapterStart) ...[
-            _buildChapterHeader(text),
-            const SizedBox(height: 12),
-          ],
-          Text(
-            text,
-            style: GoogleFonts.inter(
-              color: const Color(0xFFCCCCCC),
-              fontSize: _fontSize,
-              fontWeight: FontWeight.w400,
-              height: 1.7,
+    final textKey = GlobalKey();
+    return GestureDetector(
+      onDoubleTapDown: (details) => _handleDoubleTap(details, text, textKey),
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(24, padding.top + 48, 24, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isChapterStart) ...[
+              _buildChapterHeader(text),
+              const SizedBox(height: 12),
+            ],
+            Text(
+              text,
+              key: textKey,
+              style: GoogleFonts.inter(color: const Color(0xFFCCCCCC), fontSize: _fontSize, fontWeight: FontWeight.w400, height: 1.7),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  void _handleDoubleTap(TapDownDetails details, String text, GlobalKey textKey) {
+    final renderBox = textKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null || text.isEmpty) return;
+    final localPos = renderBox.globalToLocal(details.globalPosition);
+
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: GoogleFonts.inter(color: const Color(0xFFCCCCCC), fontSize: _fontSize, fontWeight: FontWeight.w400, height: 1.7)),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: renderBox.size.width);
+
+    final pos = tp.getPositionForOffset(localPos);
+    if (pos.offset < 0 || pos.offset >= text.length) return;
+
+    _lookupWord(text, pos.offset);
+  }
+
+  void _lookupWord(String text, int index) {
+    var start = index;
+    var end = index;
+    final wordChar = RegExp(r'[\w]');
+    while (start > 0 && wordChar.hasMatch(text[start - 1])) {
+      start--;
+    }
+    while (end < text.length && wordChar.hasMatch(text[end])) {
+      end++;
+    }
+
+    final word = text.substring(start, end).trim().toLowerCase();
+    if (word.length < 2 || word.length > 30) return;
+
+    _hideTimer?.cancel();
+    setState(() => _controlsVisible = true);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => _DictionaryDialog(word: word),
+    ).then((_) => _scheduleHide());
   }
 
   bool _isChapterStart(String text) {
@@ -572,15 +493,71 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       if (text.startsWith('${ch.title}\n')) {
         return Text(
           ch.title,
-          style: GoogleFonts.inter(
-            color: Colors.white,
-            fontSize: _fontSize * 0.7,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 2,
-          ),
+          style: GoogleFonts.inter(color: Colors.white, fontSize: _fontSize * 0.7, fontWeight: FontWeight.w500, letterSpacing: 2),
         );
       }
     }
     return const SizedBox.shrink();
+  }
+}
+
+class _DictionaryDialog extends StatefulWidget {
+  final String word;
+
+  const _DictionaryDialog({required this.word});
+
+  @override
+  State<_DictionaryDialog> createState() => _DictionaryDialogState();
+}
+
+class _DictionaryDialogState extends State<_DictionaryDialog> {
+  String? _definition;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _lookup();
+  }
+
+  Future<void> _lookup() async {
+    final def = await DictionaryService.lookup(widget.word);
+    if (mounted) setState(() { _definition = def; _loading = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF0F0F0F),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.word,
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            if (_loading)
+              const SizedBox(height: 40, child: Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Color(0xFF333333)))))
+            else if (_definition != null)
+              Text(_definition!, style: GoogleFonts.inter(color: const Color(0xFFBBBBBB), fontSize: 14, height: 1.5))
+            else
+              Text('No definition found.', style: GoogleFonts.inter(color: const Color(0xFF666666), fontSize: 14)),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Close', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 13)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
