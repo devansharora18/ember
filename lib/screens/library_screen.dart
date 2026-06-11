@@ -18,6 +18,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   final _searchController = TextEditingController();
   static const _columnOptions = [3, 4, 2];
   static const _columnIcons = [Icons.grid_view_rounded, Icons.apps_rounded, Icons.space_dashboard_rounded];
+  static const _scaleMap = {2: 1.15, 3: 1.0, 4: 0.85};
+
+  double _scale(int columns) => _scaleMap[columns] ?? 1.0;
 
   @override
   void dispose() {
@@ -170,20 +173,22 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final books = ref.watch(filteredBooksProvider);
     final columns = ref.watch(columnsProvider);
     final searching = ref.watch(searchingProvider);
+    final s = _scale(columns);
+    const appBarScale = 1.15;
 
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
+        preferredSize: const Size.fromHeight(64 * appBarScale),
         child: SafeArea(
           bottom: false,
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 20 * appBarScale),
                 child: SizedBox(
-                  height: 63,
-                  child: searching ? _buildSearchBar() : _buildTitleBar(columns),
+                  height: 63 * appBarScale,
+                  child: searching ? _buildSearchBar(appBarScale) : _buildTitleBar(columns, appBarScale),
                 ),
               ),
               Container(color: const Color(0xFF141414), height: 0.5),
@@ -192,19 +197,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         ),
       ),
       body: books.isEmpty
-          ? _buildEmptyState()
-          : _buildGrid(books, columns),
+          ? _buildEmptyState(s)
+          : _buildGrid(books, columns, s),
       floatingActionButton: FloatingActionButton(
         onPressed: _addBooks,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add, size: 24 * s),
       ),
     );
   }
 
-  Widget _buildTitleBar(int columns) {
+  Widget _buildTitleBar(int columns, double s) {
     final idx = _columnOptions.indexOf(columns);
     final icon = _columnIcons[idx.clamp(0, _columnIcons.length - 1)];
 
@@ -213,15 +218,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       children: [
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: 10 * s),
             child: Text(
               'Library',
-              style: GoogleFonts.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: 1),
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 20 * s, fontWeight: FontWeight.w600, letterSpacing: 1 * s),
             ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: EdgeInsets.only(bottom: 6 * s),
           child: Row(
             children: [
               IconButton(
@@ -230,15 +235,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   ref.read(columnsProvider.notifier).state = _columnOptions[newIdx];
                   ref.read(bookListProvider.notifier).saveLayout();
                 },
-                icon: Icon(icon, color: Colors.white.withAlpha(128), size: 20),
-                splashRadius: 22,
+                icon: Icon(icon, color: Colors.white.withAlpha(128), size: 20 * s),
+                splashRadius: 22 * s,
                 visualDensity: VisualDensity.compact,
                 tooltip: '$columns columns',
               ),
               IconButton(
                 onPressed: () => ref.read(searchingProvider.notifier).state = true,
-                icon: Icon(Icons.search, color: Colors.white.withAlpha(128), size: 22),
-                splashRadius: 22,
+                icon: Icon(Icons.search, color: Colors.white.withAlpha(128), size: 22 * s),
+                splashRadius: 22 * s,
                 visualDensity: VisualDensity.compact,
               ),
             ],
@@ -248,7 +253,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(double s) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -256,14 +261,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           child: TextField(
             controller: _searchController,
             autofocus: true,
-            style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
+            style: GoogleFonts.inter(color: Colors.white, fontSize: 16 * s),
             cursorColor: Colors.white,
             decoration: InputDecoration(
               hintText: 'Search by title or author',
-              hintStyle: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 14),
+              hintStyle: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 14 * s),
               border: InputBorder.none,
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              contentPadding: EdgeInsets.symmetric(vertical: 8 * s),
             ),
             onChanged: (v) => ref.read(searchQueryProvider.notifier).state = v,
           ),
@@ -274,45 +279,45 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ref.read(searchQueryProvider.notifier).state = '';
             ref.read(searchingProvider.notifier).state = false;
           },
-          icon: const Icon(Icons.close, color: Colors.white, size: 20),
-          splashRadius: 20,
+          icon: Icon(Icons.close, color: Colors.white, size: 20 * s),
+          splashRadius: 20 * s,
           visualDensity: VisualDensity.compact,
         ),
       ],
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(double s) {
     final query = ref.watch(searchQueryProvider);
     final isSearching = query.isNotEmpty;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isSearching ? Icons.search_off : Icons.menu_book_rounded, size: 48, color: Colors.white.withAlpha(20)),
-          const SizedBox(height: 16),
+          Icon(isSearching ? Icons.search_off : Icons.menu_book_rounded, size: 48 * s, color: Colors.white.withAlpha(20)),
+          SizedBox(height: 16 * s),
           Text(
             isSearching ? 'no results for "$query"' : 'no books yet',
-            style: GoogleFonts.inter(color: const Color(0xFF444444), fontSize: 15, fontWeight: FontWeight.w400),
+            style: GoogleFonts.inter(color: const Color(0xFF444444), fontSize: 15 * s, fontWeight: FontWeight.w400),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8 * s),
           Text(
             isSearching ? 'try a different search' : 'tap + to add from your device',
-            style: GoogleFonts.inter(color: const Color(0xFF333333), fontSize: 13, fontWeight: FontWeight.w400),
+            style: GoogleFonts.inter(color: const Color(0xFF333333), fontSize: 13 * s, fontWeight: FontWeight.w400),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGrid(List<Book> books, int columns) {
+  Widget _buildGrid(List<Book> books, int columns, double s) {
     final allBooks = ref.watch(bookListProvider);
     return GridView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12 * s),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
+        mainAxisSpacing: 8 * s,
+        crossAxisSpacing: 8 * s,
         childAspectRatio: 0.56,
       ),
       itemCount: books.length,
@@ -321,6 +326,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         final bookIndex = allBooks.indexOf(book);
         return BookCard(
           book: book,
+          scale: s,
           onEdit: () => _editBook(bookIndex),
           onRefreshCover: () => ref.read(bookListProvider.notifier).refreshCover(bookIndex),
           onDelete: () => _deleteBook(bookIndex),
