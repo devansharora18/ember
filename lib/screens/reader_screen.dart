@@ -9,6 +9,7 @@ import '../../services/epub_parser.dart';
 import 'reader/reader_controls.dart';
 import 'reader/reader_dialogs.dart';
 import 'reader/reader_dictionary_dialog.dart';
+import 'reader/reader_rsvp_screen.dart';
 
 class ReaderScreen extends ConsumerStatefulWidget {
   final Book book;
@@ -195,10 +196,38 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         showReaderGoToPageDialog(context, _currentPage, _totalPages, _darkMode, widget.book.coverBytes != null, _pageStarts, widget.book.filePath, _pageController);
         _scheduleHide();
         return;
+      case 'rsvp':
+        _openRsvp();
+        return;
       case 'toggle_mode':
         setState(() => _darkMode = !_darkMode);
         BookStorage.saveDarkMode(widget.book.filePath, _darkMode);
         break;
+    }
+    _scheduleHide();
+  }
+
+  void _openRsvp() async {
+    _hideTimer?.cancel();
+    final newPos = await Navigator.push<int>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RsvpScreen(
+          fullText: _fullText,
+          startPosition: _position,
+          totalChars: _totalChars,
+          fontFamily: _fontFamily,
+          darkMode: _darkMode,
+        ),
+      ),
+    );
+    if (newPos != null && mounted) {
+      _position = newPos.clamp(0, _totalChars);
+      _currentPage = _findPageForPosition(_position);
+      final coverOff = widget.book.coverBytes != null ? 1 : 0;
+      _pageController.jumpToPage(_currentPage + coverOff);
+      BookStorage.savePosition(widget.book.filePath, _position);
+      _saveProgress();
     }
     _scheduleHide();
   }
@@ -297,6 +326,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 },
                 onMenuAction: _handleMenuAction,
                 menuItems: [
+                  readerMenuPopItem('RSVP speed read', 'rsvp', _darkMode),
                   readerMenuPopItem('Select font…', 'select_font', _darkMode),
                   readerMenuPopItem('Go to page…', 'go_to_page', _darkMode),
                   readerMenuPopItem(_darkMode ? 'Light mode' : 'Dark mode', 'toggle_mode', _darkMode),
