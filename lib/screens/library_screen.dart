@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/book.dart';
 import '../providers/book_list_provider.dart';
 import '../widgets/book_card.dart';
+import 'reader_screen.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -202,6 +203,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     }
   }
 
+  void _openBook(Book book) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ReaderScreen(book: book)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final books = ref.watch(filteredBooksProvider);
@@ -367,6 +375,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         return BookCard(
           book: book,
           scale: s,
+          onTap: () => _openBook(book),
           onEdit: () => _editBook(bookIndex),
           onRefreshCover: () => ref.read(bookListProvider.notifier).refreshCover(bookIndex),
           onDelete: () => _deleteBook(bookIndex),

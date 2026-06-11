@@ -85,4 +85,27 @@ class BookStorage {
       'columns': columns,
     }));
   }
+
+  static Future<void> savePosition(String filePath, int position) async {
+    try {
+      final dir = await _dir();
+      final positionsDir = Directory('${dir.path}/positions');
+      if (!await positionsDir.exists()) await positionsDir.create(recursive: true);
+      final key = _coverFileName(filePath);
+      final file = File('${positionsDir.path}/$key');
+      await file.writeAsString(position.toString());
+    } catch (_) {}
+  }
+
+  static Future<int> loadPosition(String filePath) async {
+    try {
+      final dir = await _dir();
+      final key = _coverFileName(filePath);
+      final file = File('${dir.path}/positions/$key');
+      if (!await file.exists()) return 0;
+      return int.tryParse(await file.readAsString()) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
 }

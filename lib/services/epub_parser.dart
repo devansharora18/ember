@@ -15,6 +15,13 @@ class EpubMetadata {
   });
 }
 
+class EpubChapter {
+  final String title;
+  final String content;
+
+  const EpubChapter({required this.title, required this.content});
+}
+
 class EpubParser {
   static EpubMetadata parse(String filePath) {
     final file = File(filePath);
@@ -48,6 +55,158 @@ class EpubParser {
     }
 
     return EpubMetadata(title: title, author: author, coverBytes: coverBytes);
+  }
+
+  static List<EpubChapter> extractChapters(String filePath) {
+    try {
+      final file = File(filePath);
+      final bytes = file.readAsBytesSync();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      String? opfPath;
+      for (final entry in archive) {
+        if (entry.name == 'META-INF/container.xml') {
+          final xml = utf8.decode(entry.content as List<int>);
+          opfPath = _extractOpfPath(xml);
+          break;
+        }
+      }
+      if (opfPath == null) return [];
+
+      final opfDir = opfPath.contains('/') ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1) : '';
+      final opfEntry = archive.findFile(opfPath);
+      if (opfEntry == null) return [];
+
+      final opfXml = utf8.decode(opfEntry.content as List<int>);
+      final spineHrefs = _extractSpineHrefs(opfXml);
+      // Also extract spine idrefs to look up chapter titles from NCX
+      final spineIdrefs = _extractSpineIdrefs(opfXml);
+      // Try to get chapter titles from NCX
+      final ncxTitles = _extractNcxTitles(archive, opfDir, opfXml, spineIdrefs);
+
+      final chapters = <EpubChapter>[];
+      for (var i = 0; i < spineHrefs.length; i++) {
+        final href = spineHrefs[i];
+        final path = _resolvePath(opfDir, href);
+        final entry = archive.findFile(path);
+        if (entry != null) {
+          final html = utf8.decode(entry.content as List<int>);
+          var title = i < ncxTitles.length ? ncxTitles[i] : '';
+          if (title.isEmpty) {
+            title = _extractTitleFromHtml(html);
+          }
+          if (title.isEmpty) {
+            title = 'Chapter ${i + 1}';
+          }
+          chapters.add(EpubChapter(title: title, content: _stripHtml(html)));
+        }
+      }
+      return chapters;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static List<String> _extractSpineIdrefs(String opfXml) {
+    final re = RegExp(r'<itemref\s+[^>]*idref="([^"]+)"[^>]*/?>', caseSensitive: false);
+    return re.allMatches(opfXml).map((m) => m.group(1)!).toList();
+  }
+
+  static List<String> _extractNcxTitles(Archive archive, String opfDir, String opfXml, List<String> spineIdrefs) {
+    // Try NAV (EPUB3)
+    final navHref = _extractNavHref(opfXml);
+    if (navHref != null) {
+      final navPath = _resolvePath(opfDir, navHref);
+      final navEntry = archive.findFile(navPath);
+      if (navEntry != null) {
+        final navHtml = utf8.decode(navEntry.content as List<int>);
+        final titles = _extractNavTitles(navHtml);
+        if (titles.isNotEmpty) return titles;
+      }
+    }
+    // Try NCX (EPUB2) - look for .ncx file
+    final manifestItems = _parseManifestItems(opfXml);
+    for (final entry in manifestItems.entries) {
+      if (entry.key.toLowerCase().contains('ncx') || entry.value.endsWith('.ncx')) {
+        final ncxPath = _resolvePath(opfDir, entry.value);
+        final ncxEntry = archive.findFile(ncxPath);
+        if (ncxEntry != null) {
+          final ncxXml = utf8.decode(ncxEntry.content as List<int>);
+          final titles = _extractNcxNavPoints(ncxXml);
+          if (titles.isNotEmpty) return titles;
+        }
+      }
+    }
+    return [];
+  }
+
+  static String? _extractNavHref(String opfXml) {
+    final manifestItems = _parseManifestItems(opfXml);
+    for (final entry in manifestItems.entries) {
+      if (entry.key.toLowerCase().contains('nav') || entry.value.contains('nav')) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
+  static List<String> _extractNavTitles(String html) {
+    final titles = <String>[];
+    final navRe = RegExp(r'<nav[^>]*epub:type="toc"[^>]*>(.*?)</nav>', dotAll: true, caseSensitive: false);
+    final navMatch = navRe.firstMatch(html);
+    final navContent = navMatch?.group(1) ?? html;
+    final linkRe = RegExp(r'<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>', dotAll: true, caseSensitive: false);
+    for (final match in linkRe.allMatches(navContent)) {
+      final label = _stripHtml(match.group(2)!);
+      if (label.isNotEmpty) titles.add(label);
+    }
+    return titles;
+  }
+
+  static List<String> _extractNcxNavPoints(String xml) {
+    final titles = <String>[];
+    final re = RegExp(r'<navPoint[^>]*>.*?<navLabel>.*?<text>(.*?)</text>', dotAll: true, caseSensitive: false);
+    for (final match in re.allMatches(xml)) {
+      final title = match.group(1)!.trim();
+      if (title.isNotEmpty) titles.add(title);
+    }
+    return titles;
+  }
+
+  static String _extractTitleFromHtml(String html) {
+    final titleRe = RegExp(r'<title[^>]*>(.*?)</title>', dotAll: true, caseSensitive: false);
+    final match = titleRe.firstMatch(html);
+    return match != null ? _stripHtml(match.group(1)!) : '';
+  }
+
+  static List<String> _extractSpineHrefs(String opfXml) {
+    final manifestItems = _parseManifestItems(opfXml);
+    final spineRe = RegExp(r'<itemref\s+[^>]*idref="([^"]+)"[^>]*/?>', caseSensitive: false);
+    final hrefs = <String>[];
+    for (final match in spineRe.allMatches(opfXml)) {
+      final id = match.group(1)!;
+      final href = manifestItems[id];
+      if (href != null && (href.endsWith('.xhtml') || href.endsWith('.html') || href.endsWith('.htm'))) {
+        hrefs.add(href);
+      }
+    }
+    return hrefs;
+  }
+
+  static String _stripHtml(String html) {
+    var text = html
+        .replaceAll(RegExp(r'<style[^>]*>.*?</style>', dotAll: true), '')
+        .replaceAll(RegExp(r'<script[^>]*>.*?</script>', dotAll: true), '')
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll(RegExp(r'&nbsp;'), ' ')
+        .replaceAll(RegExp(r'&amp;'), '&')
+        .replaceAll(RegExp(r'&lt;'), '<')
+        .replaceAll(RegExp(r'&gt;'), '>')
+        .replaceAll(RegExp(r'&quot;'), '"')
+        .replaceAll(RegExp(r'&#\d+;'), '')
+        .replaceAll(RegExp(r'&[a-z]+;'), '')
+        .replaceAll(RegExp(r'\s+'), ' ');
+    return text.trim();
   }
 
   static Uint8List? _extractCover(String opfXml, String opfDir, Archive archive) {
