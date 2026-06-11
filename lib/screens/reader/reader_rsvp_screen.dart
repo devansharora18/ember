@@ -27,7 +27,7 @@ class RsvpScreen extends StatefulWidget {
 
 class _RsvpScreenState extends State<RsvpScreen> {
   int _index = 0;
-  int _wpm = 200;
+  int _wpm = 180;
   bool _playing = false;
   Timer? _timer;
   bool _controlsVisible = true;
@@ -37,7 +37,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   late final List<_Word> _words;
 
   static const _minWpm = 50;
-  static const _maxWpm = 600;
+  static const _maxWpm = 400;
   static const _autoHideDelay = Duration(seconds: 3);
 
   @override
@@ -53,7 +53,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   Future<void> _loadWpm() async {
     final saved = await BookStorage.loadRsvpWpm();
     if (saved != null && mounted) {
-      setState(() => _wpm = saved.clamp(_minWpm, _maxWpm));
+      setState(() => _wpm = ((saved.clamp(_minWpm, _maxWpm)) / 5).round() * 5);
     }
   }
 
@@ -204,7 +204,8 @@ class _RsvpScreenState extends State<RsvpScreen> {
   }
 
   void _adjustWpm(int delta) {
-    setState(() => _wpm = (_wpm + delta).clamp(_minWpm, _maxWpm));
+    final newWpm = ((_wpm + delta) / 5).round() * 5;
+    setState(() => _wpm = newWpm.clamp(_minWpm, _maxWpm));
     BookStorage.saveRsvpWpm(_wpm);
     if (_playing) {
       _timer?.cancel();
@@ -318,9 +319,9 @@ class _RsvpScreenState extends State<RsvpScreen> {
                           Text('${(progress * 100).round()}%', style: GoogleFonts.inter(color: dim, fontSize: 11)),
                         ]),
                         Row(children: [
-                          IconButton(icon: Icon(Icons.remove, color: fg, size: 18), onPressed: () => _adjustWpm(-50), visualDensity: VisualDensity.compact),
-                          Expanded(child: Slider(value: _wpm.toDouble(), min: _minWpm.toDouble(), max: _maxWpm.toDouble(), activeColor: fg, inactiveColor: widget.darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: (v) => _adjustWpm(v.round() - _wpm))),
-                          IconButton(icon: Icon(Icons.add, color: fg, size: 18), onPressed: () => _adjustWpm(50), visualDensity: VisualDensity.compact),
+                          IconButton(icon: Icon(Icons.remove, color: fg, size: 18), onPressed: () => _adjustWpm(-5), visualDensity: VisualDensity.compact),
+                          Expanded(child: Slider(value: _wpm.toDouble(), min: _minWpm.toDouble(), max: _maxWpm.toDouble(), divisions: ((_maxWpm - _minWpm) / 5).round(), activeColor: fg, inactiveColor: widget.darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: (v) => _adjustWpm(v.round() - _wpm))),
+                          IconButton(icon: Icon(Icons.add, color: fg, size: 18), onPressed: () => _adjustWpm(5), visualDensity: VisualDensity.compact),
                         ]),
                       ]),
                     ),
