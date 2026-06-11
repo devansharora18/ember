@@ -56,11 +56,9 @@ class _RsvpScreenState extends State<RsvpScreen> {
 
   List<_Word> _tokenize(String text) {
     final words = <_Word>[];
-    final re = RegExp(r"[\w]+|[^\s\w]|\s+");
-    var pos = 0;
+    final re = RegExp(r'\S+');
     for (final match in re.allMatches(text)) {
-      words.add(_Word(match.group(0)!, pos));
-      pos = match.end;
+      words.add(_Word(match.group(0)!, match.start));
     }
     return words;
   }
