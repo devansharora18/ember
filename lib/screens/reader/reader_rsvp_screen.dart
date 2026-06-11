@@ -320,7 +320,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
                         ]),
                         Row(children: [
                           IconButton(icon: Icon(Icons.remove, color: fg, size: 18), onPressed: () => _adjustWpm(-5), visualDensity: VisualDensity.compact),
-                          Expanded(child: Slider(value: _wpm.toDouble(), min: _minWpm.toDouble(), max: _maxWpm.toDouble(), divisions: ((_maxWpm - _minWpm) / 5).round(), activeColor: fg, inactiveColor: widget.darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: (v) => _adjustWpm(v.round() - _wpm))),
+                          Expanded(child: Slider(value: _wpm.toDouble(), min: _minWpm.toDouble(), max: _maxWpm.toDouble(), divisions: ((_maxWpm - _minWpm) / 5).round(), activeColor: fg, inactiveColor: widget.darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChangeStart: (_) => _hideTimer?.cancel(), onChangeEnd: (_) => _scheduleHide(), onChanged: (v) => _adjustWpm(v.round() - _wpm))),
                           IconButton(icon: Icon(Icons.add, color: fg, size: 18), onPressed: () => _adjustWpm(5), visualDensity: VisualDensity.compact),
                         ]),
                       ]),
