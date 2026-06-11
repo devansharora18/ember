@@ -352,6 +352,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Widget _buildGrid(List<Book> books, int columns, double s) {
     final allBooks = ref.watch(bookListProvider);
     return GridView.builder(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       padding: EdgeInsets.all(12 * s),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
