@@ -116,10 +116,7 @@ class BookStorage {
   static Future<void> saveFontSize(String filePath, double fontSize) async {
     try {
       final dir = await _dir();
-      final positionsDir = Directory('${dir.path}/positions');
-      if (!await positionsDir.exists()) await positionsDir.create(recursive: true);
-      final key = _coverFileName(filePath);
-      final file = File('${positionsDir.path}/${key}_fontsize');
+      final file = File('${dir.path}/settings_fontsize');
       await file.writeAsString(fontSize.toString());
     } catch (_) {}
   }
@@ -127,10 +124,47 @@ class BookStorage {
   static Future<double?> loadFontSize(String filePath) async {
     try {
       final dir = await _dir();
-      final key = _coverFileName(filePath);
-      final file = File('${dir.path}/positions/${key}_fontsize');
+      final file = File('${dir.path}/settings_fontsize');
       if (!await file.exists()) return null;
       return double.tryParse(await file.readAsString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> saveFontFamily(String filePath, String family) async {
+    try {
+      final dir = await _dir();
+      final file = File('${dir.path}/settings_fontfamily');
+      await file.writeAsString(family);
+    } catch (_) {}
+  }
+
+  static Future<String?> loadFontFamily(String filePath) async {
+    try {
+      final dir = await _dir();
+      final file = File('${dir.path}/settings_fontfamily');
+      if (!await file.exists()) return null;
+      return await file.readAsString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> saveDarkMode(String filePath, bool darkMode) async {
+    try {
+      final dir = await _dir();
+      final file = File('${dir.path}/settings_darkmode');
+      await file.writeAsString(darkMode.toString());
+    } catch (_) {}
+  }
+
+  static Future<bool?> loadDarkMode(String filePath) async {
+    try {
+      final dir = await _dir();
+      final file = File('${dir.path}/settings_darkmode');
+      if (!await file.exists()) return null;
+      return await file.readAsString() == 'true';
     } catch (_) {
       return null;
     }
