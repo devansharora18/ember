@@ -61,15 +61,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     }
   }
 
+  void _saveProgress() {
+    if (_totalChars <= 0) return;
+    final progress = _position / _totalChars;
+    final idx = ref.read(bookListProvider).indexWhere((b) => b.filePath == widget.book.filePath);
+    if (idx != -1) {
+      ref.read(bookListProvider.notifier).editBook(idx, progress: progress);
+    }
+  }
+
   @override
   void dispose() {
-    if (_totalChars > 0) {
-      final progress = _position / _totalChars;
-      final idx = ref.read(bookListProvider).indexWhere((b) => b.filePath == widget.book.filePath);
-      if (idx != -1) {
-        ref.read(bookListProvider.notifier).editBook(idx, progress: progress);
-      }
-    }
+    _saveProgress();
     _pageController.dispose();
     _hideTimer?.cancel();
     super.dispose();
@@ -407,7 +410,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              _saveProgress();
+              Navigator.pop(context);
+            },
           ),
           Expanded(
             child: Text(

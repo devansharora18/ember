@@ -150,15 +150,20 @@ class BookCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (book.progress > 0)
-              ClipRRect(
-                borderRadius: BorderRadius.zero,
-                child: LinearProgressIndicator(
-                  value: book.progress.clamp(0.0, 1.0),
-                  backgroundColor: const Color(0xFF1A1A1A),
-                  valueColor: const AlwaysStoppedAnimation(Color(0xFF333333)),
-                  minHeight: 2 * s,
-                ),
+            if (book.lastOpened != null)
+              Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.zero,
+                    child: LinearProgressIndicator(
+                      value: book.progress.clamp(0.0, 1.0),
+                      backgroundColor: const Color(0xFF141414),
+                      valueColor: const AlwaysStoppedAnimation(Color(0xFF888888)),
+                      minHeight: 3 * s,
+                    ),
+                  ),
+                  SizedBox(height: 2 * s),
+                ],
               ),
           ],
         ),
