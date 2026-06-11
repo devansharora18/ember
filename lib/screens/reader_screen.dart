@@ -346,22 +346,24 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   void _lookupWord(String text, int index) {
-    if (_rsvpPickCompleter != null) {
-      _rsvpOverlay?.remove();
-      _rsvpOverlay = null;
-      // index is within this page text — need to convert to full text position
-      final coverCount = widget.book.coverBytes != null ? 1 : 0;
-      final page = _pageController.hasClients ? _pageController.page?.round() ?? 0 : 0;
-      final textPage = page - coverCount;
-      final pageStart = textPage >= 0 && textPage < _pageStarts.length - 1 ? _pageStarts[textPage] : 0;
-      _rsvpPickCompleter!.complete(pageStart + index);
-      _rsvpPickCompleter = null;
-      return;
-    }
+    // Find word boundaries first
     var s = index, e = index;
     final wc = RegExp(r'[\w]');
     while (s > 0 && wc.hasMatch(text[s - 1])) { s--; }
     while (e < text.length && wc.hasMatch(text[e])) { e++; }
+
+    if (_rsvpPickCompleter != null) {
+      _rsvpOverlay?.remove();
+      _rsvpOverlay = null;
+      final coverCount = widget.book.coverBytes != null ? 1 : 0;
+      final page = _pageController.hasClients ? _pageController.page?.round() ?? 0 : 0;
+      final textPage = page - coverCount;
+      final pageStart = textPage >= 0 && textPage < _pageStarts.length - 1 ? _pageStarts[textPage] : 0;
+      _rsvpPickCompleter!.complete(pageStart + s);
+      _rsvpPickCompleter = null;
+      return;
+    }
+
     final word = text.substring(s, e).trim().toLowerCase();
     if (word.length < 2 || word.length > 30) return;
     _hideTimer?.cancel();
