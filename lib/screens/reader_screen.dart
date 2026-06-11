@@ -38,6 +38,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   bool _darkMode = true;
   String _fontFamily = 'Inter';
   Timer? _hideTimer;
+  Completer<int?>? _rsvpPickCompleter;
+  OverlayEntry? _rsvpOverlay;
 
   static const _minFontSize = 12.0;
   static const _maxFontSize = 24.0;
@@ -209,15 +211,30 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   void _openRsvp() async {
     _hideTimer?.cancel();
+    setState(() => _controlsVisible = true);
+
+    final startPos = await _pickRsvpStartWord();
+    if (startPos == null || !mounted) {
+      _scheduleHide();
+      return;
+    }
+
+    final pauseSentences = await _askRsvpPauseSentences();
+    if (pauseSentences == null || !mounted) {
+      _scheduleHide();
+      return;
+    }
+
     final newPos = await Navigator.push<int>(
       context,
       MaterialPageRoute(
         builder: (_) => RsvpScreen(
           fullText: _fullText,
-          startPosition: _position,
+          startPosition: startPos,
           totalChars: _totalChars,
           fontFamily: _fontFamily,
           darkMode: _darkMode,
+          pauseAfterWords: pauseSentences,
         ),
       ),
     );
@@ -230,6 +247,81 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       _saveProgress();
     }
     _scheduleHide();
+  }
+
+  Future<int?> _pickRsvpStartWord() async {
+    final completer = Completer<int?>();
+    late final OverlayEntry overlay;
+
+    overlay = OverlayEntry(
+      builder: (ctx) => Positioned(
+        top: MediaQuery.of(context).padding.top + 56,
+        left: 20, right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: _darkMode ? const Color(0xEE000000) : const Color(0xEEF5F5F0),
+              border: Border.all(color: _darkMode ? const Color(0xFF444444) : const Color(0xFFAAAAAA)),
+              borderRadius: BorderRadius.zero,
+            ),
+            child: Row(children: [
+              const Icon(Icons.touch_app, size: 16, color: Color(0xFF888888)),
+              const SizedBox(width: 10),
+              Expanded(child: Text('Tap a word to start RSVP from here', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13))),
+              GestureDetector(
+                onTap: () { completer.complete(null); overlay.remove(); },
+                child: const Icon(Icons.close, size: 18, color: Color(0xFF888888)),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(overlay);
+    _rsvpPickCompleter = completer;
+    _rsvpOverlay = overlay;
+
+    return completer.future;
+  }
+
+  Future<int?> _askRsvpPauseSentences() async {
+    var count = 0;
+    return showDialog<int>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => Dialog(
+          backgroundColor: _darkMode ? const Color(0xFF0F0F0F) : const Color(0xFFF0F0EB),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Auto-pause', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 16),
+                Text('Pause every N sentences', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 12)),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Text('Off', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11)),
+                  Expanded(child: Slider(value: count.toDouble(), min: 0, max: 20, divisions: 20, activeColor: _darkMode ? Colors.white : Colors.black87, inactiveColor: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: (v) => setD(() => count = v.round()))),
+                  Text('20', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11)),
+                ]),
+                Text(count == 0 ? 'No auto-pause' : 'Every $count sentences', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 16),
+                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 13))),
+                  const SizedBox(width: 8),
+                  TextButton(onPressed: () => Navigator.pop(ctx, count), child: Text('Start', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w600))),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   // --------------- Progress ---------------
@@ -254,6 +346,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   void _lookupWord(String text, int index) {
+    if (_rsvpPickCompleter != null) {
+      _rsvpOverlay?.remove();
+      _rsvpOverlay = null;
+      // index is within this page text — need to convert to full text position
+      final coverCount = widget.book.coverBytes != null ? 1 : 0;
+      final page = _pageController.hasClients ? _pageController.page?.round() ?? 0 : 0;
+      final textPage = page - coverCount;
+      final pageStart = textPage >= 0 && textPage < _pageStarts.length - 1 ? _pageStarts[textPage] : 0;
+      _rsvpPickCompleter!.complete(pageStart + index);
+      _rsvpPickCompleter = null;
+      return;
+    }
     var s = index, e = index;
     final wc = RegExp(r'[\w]');
     while (s > 0 && wc.hasMatch(text[s - 1])) { s--; }
@@ -290,7 +394,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final hasCover = book.coverBytes != null;
 
     return GestureDetector(
-      onTap: _toggleControls,
+      onTap: _rsvpPickCompleter != null ? null : _toggleControls,
       behavior: HitTestBehavior.translucent,
       child: Stack(
         children: [
@@ -360,6 +464,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final textKey = GlobalKey();
     return GestureDetector(
       onDoubleTapDown: (d) => _handleDoubleTap(d, text, textKey),
+      onTapDown: _rsvpPickCompleter != null ? (d) => _handleDoubleTap(d, text, textKey) : null,
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(24, pad.top + 48, 24, 0),

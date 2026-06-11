@@ -8,6 +8,7 @@ class RsvpScreen extends StatefulWidget {
   final int totalChars;
   final String fontFamily;
   final bool darkMode;
+  final int pauseAfterWords;
 
   const RsvpScreen({
     super.key,
@@ -16,6 +17,7 @@ class RsvpScreen extends StatefulWidget {
     required this.totalChars,
     required this.fontFamily,
     required this.darkMode,
+    this.pauseAfterWords = 0,
   });
 
   @override
@@ -29,6 +31,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   Timer? _timer;
   bool _controlsVisible = true;
   Timer? _hideTimer;
+  int _sentencesSincePause = 0;
 
   late final List<_Word> _words;
 
@@ -84,7 +87,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   void _togglePlaying() {
     _timer?.cancel();
     if (_playing) {
-      setState(() => _playing = false);
+      setState(() { _playing = false; _sentencesSincePause = 0; });
       return;
     }
     setState(() => _playing = true);
@@ -100,8 +103,18 @@ class _RsvpScreenState extends State<RsvpScreen> {
     _timer = Timer(delay, () {
       if (!mounted || !_playing) return;
       setState(() {
-        if (_index < _words.length - 1) _index++;
+        if (_index < _words.length - 1) {
+          _index++;
+          final word = _words[_index].text;
+          if (word.endsWith('.') || word.endsWith('!') || word.endsWith('?')) {
+            _sentencesSincePause++;
+          }
+        }
       });
+      if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords) {
+        setState(() { _playing = false; _sentencesSincePause = 0; });
+        return;
+      }
       _tick();
     });
   }
@@ -130,7 +143,8 @@ class _RsvpScreenState extends State<RsvpScreen> {
   Widget _buildWord() {
     if (_words.isEmpty) return const SizedBox.shrink();
     final w = _words[_index.clamp(0, _words.length - 1)].text;
-    final isPause = _words.length > 1 && _index >= _words.length - 1;
+    final isFinished = _words.length > 1 && _index >= _words.length - 1;
+    final isPaused = !_playing && !isFinished;
     final bg = widget.darkMode ? const Color(0xFF000000) : const Color(0xFFF5F5F0);
     final fg = widget.darkMode ? Colors.white : Colors.black87;
 
@@ -141,16 +155,27 @@ class _RsvpScreenState extends State<RsvpScreen> {
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: isPause
+            child: isFinished
                 ? Column(mainAxisSize: MainAxisSize.min, children: [
                     const Icon(Icons.check_circle, size: 48, color: Color(0xFF444444)),
                     const SizedBox(height: 16),
                     Text('Finished', style: GoogleFonts.getFont(widget.fontFamily, fontSize: 18, color: const Color(0xFF555555))),
                   ])
-                : Text(
-                    w,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.getFont(widget.fontFamily, fontSize: 36, fontWeight: FontWeight.w500, color: fg),
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(w, textAlign: TextAlign.center, style: GoogleFonts.getFont(widget.fontFamily, fontSize: 36, fontWeight: FontWeight.w500, color: fg)),
+                      if (isPaused) ...[
+                        const SizedBox(height: 20),
+                        Text('Paused', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 13)),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: _togglePlaying,
+                          icon: const Icon(Icons.play_arrow, size: 16, color: Color(0xFF888888)),
+                          label: Text('Resume', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 13)),
+                        ),
+                      ],
+                    ],
                   ),
           ),
         ),
