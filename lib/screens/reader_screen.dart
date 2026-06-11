@@ -48,8 +48,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
     if (page == null) return;
     final coverPageCount = widget.book.coverBytes != null ? 1 : 0;
     final rounded = page.round();
-    final textPage = (rounded - coverPageCount).clamp(0, _pageStarts.length - 1);
-    if (textPage != _currentPage && textPage >= 0 && textPage < _pageStarts.length) {
+    final textPage = (rounded - coverPageCount).clamp(
+      0,
+      _pageStarts.length - 1,
+    );
+    if (textPage != _currentPage &&
+        textPage >= 0 &&
+        textPage < _pageStarts.length) {
       setState(() => _currentPage = textPage);
     }
   }
@@ -80,7 +85,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   Future<void> _loadContent() async {
-    final chapters = await Future(() => EpubParser.extractChapters(widget.book.filePath));
+    final chapters = await Future(
+      () => EpubParser.extractChapters(widget.book.filePath),
+    );
     final savedPos = await BookStorage.loadPosition(widget.book.filePath);
     final savedFontSize = await BookStorage.loadFontSize(widget.book.filePath);
     if (!mounted) return;
@@ -124,13 +131,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
   int _charsPerPage(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final padding = MediaQuery.of(context).padding;
-    final textPadding = const EdgeInsets.fromLTRB(24, 48, 24, 8);
+    final textPadding = const EdgeInsets.fromLTRB(24, 48, 24, 4);
     final width = size.width - textPadding.left - textPadding.right;
-    final height = size.height - padding.top - padding.bottom - textPadding.top - textPadding.bottom;
+    final height =
+        size.height -
+        padding.top -
+        padding.bottom -
+        textPadding.top -
+        textPadding.bottom;
     if (width <= 0 || height <= 0) return 1000;
 
     final tp = TextPainter(
-      text: TextSpan(text: 'X', style: GoogleFonts.inter(fontSize: _fontSize, height: 1.7)),
+      text: TextSpan(
+        text: 'X',
+        style: GoogleFonts.inter(fontSize: _fontSize, height: 1.7),
+      ),
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: width);
 
@@ -154,10 +169,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
       var end = (breaks.last + cpp).clamp(0, _fullText.length);
       if (end < _fullText.length) {
         var adjusted = end;
-        while (adjusted > breaks.last && adjusted > end - 80 && _fullText[adjusted] != ' ' && _fullText[adjusted] != '\n') {
+        while (adjusted > breaks.last &&
+            adjusted > end - 80 &&
+            _fullText[adjusted] != ' ' &&
+            _fullText[adjusted] != '\n') {
           adjusted--;
         }
-        if (adjusted > breaks.last && (_fullText[adjusted] == ' ' || _fullText[adjusted] == '\n')) {
+        if (adjusted > breaks.last &&
+            (_fullText[adjusted] == ' ' || _fullText[adjusted] == '\n')) {
           end = adjusted + 1;
         }
       }
@@ -211,13 +230,22 @@ class _ReaderScreenState extends State<ReaderScreen> {
       backgroundColor: const Color(0xFF0F0F0F),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       builder: (ctx) => Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Text('Contents', style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              child: Text(
+                'Contents',
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             Container(color: const Color(0xFF141414), height: 0.5),
             Expanded(
@@ -225,14 +253,31 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: _chapters.length,
                 itemBuilder: (_, i) {
-                  final nextPos = i < _chapterStarts.length - 1 ? _chapterStarts[i + 1] : _totalChars;
-                  final isCurrent = _position >= _chapterStarts[i] && _position < nextPos;
+                  final nextPos = i < _chapterStarts.length - 1
+                      ? _chapterStarts[i + 1]
+                      : _totalChars;
+                  final isCurrent =
+                      _position >= _chapterStarts[i] && _position < nextPos;
                   return ListTile(
                     dense: true,
-                    leading: Text('${i + 1}', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 13)),
+                    leading: Text(
+                      '${i + 1}',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF555555),
+                        fontSize: 13,
+                      ),
+                    ),
                     title: Text(
                       _chapters[i].title,
-                      style: GoogleFonts.inter(color: isCurrent ? Colors.white : const Color(0xFFAAAAAA), fontSize: 14, fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400),
+                      style: GoogleFonts.inter(
+                        color: isCurrent
+                            ? Colors.white
+                            : const Color(0xFFAAAAAA),
+                        fontSize: 14,
+                        fontWeight: isCurrent
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -253,7 +298,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   int _chapterPosition(int chapterIndex) {
-    if (chapterIndex < _chapterStarts.length) return _chapterStarts[chapterIndex];
+    if (chapterIndex < _chapterStarts.length)
+      return _chapterStarts[chapterIndex];
     return _totalChars;
   }
 
@@ -264,10 +310,23 @@ class _ReaderScreenState extends State<ReaderScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Color(0xFF333333))))
+          ? const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(Color(0xFF333333)),
+              ),
+            )
           : _chapters.isEmpty
-              ? Center(child: Text('No readable content', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 14)))
-              : _buildReader(book),
+          ? Center(
+              child: Text(
+                'No readable content',
+                style: GoogleFonts.inter(
+                  color: const Color(0xFF555555),
+                  fontSize: 14,
+                ),
+              ),
+            )
+          : _buildReader(book),
     );
   }
 
@@ -302,7 +361,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
               }
               final textPageIndex = pageIndex - coverPageCount;
               final start = _pageStarts[textPageIndex];
-              final end = textPageIndex + 1 < _pageStarts.length ? _pageStarts[textPageIndex + 1] : _fullText.length;
+              final end = textPageIndex + 1 < _pageStarts.length
+                  ? _pageStarts[textPageIndex + 1]
+                  : _fullText.length;
               final pageText = _fullText.substring(start, end);
               return _buildTextPage(pageText, padding);
             },
@@ -339,14 +400,44 @@ class _ReaderScreenState extends State<ReaderScreen> {
           Expanded(
             child: Text(
               book.title,
-              style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.5),
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          IconButton(icon: const Icon(Icons.text_decrease, color: Colors.white, size: 20), onPressed: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); }),
-          IconButton(icon: const Icon(Icons.text_increase, color: Colors.white, size: 20), onPressed: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); }),
-          IconButton(icon: const Icon(Icons.list, color: Colors.white, size: 20), onPressed: _showToc),
+          IconButton(
+            icon: const Icon(
+              Icons.text_decrease,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () {
+              _hideTimer?.cancel();
+              _setFontSize(-1);
+              _scheduleHide();
+            },
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.text_increase,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () {
+              _hideTimer?.cancel();
+              _setFontSize(1);
+              _scheduleHide();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.list, color: Colors.white, size: 20),
+            onPressed: _showToc,
+          ),
         ],
       ),
     );
@@ -363,25 +454,49 @@ class _ReaderScreenState extends State<ReaderScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              if (coverPageCount > 0 && _pageController.hasClients && _pageController.page?.round() == 0)
-                Text('Cover', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 11))
+              if (coverPageCount > 0 &&
+                  _pageController.hasClients &&
+                  _pageController.page?.round() == 0)
+                Text(
+                  'Cover',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF888888),
+                    fontSize: 11,
+                  ),
+                )
               else ...[
-                Text('${_currentPage + 1} / $_totalPages', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 11)),
+                Text(
+                  '${_currentPage + 1} / $_totalPages',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF888888),
+                    fontSize: 11,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.zero,
                     child: LinearProgressIndicator(
-                      value: _totalPages > 1 ? (_currentPage / (_totalPages - 1)).clamp(0.0, 1.0) : 0,
+                      value: _totalPages > 1
+                          ? (_currentPage / (_totalPages - 1)).clamp(0.0, 1.0)
+                          : 0,
                       backgroundColor: const Color(0xFF1A1A1A),
-                      valueColor: const AlwaysStoppedAnimation(Color(0xFF444444)),
+                      valueColor: const AlwaysStoppedAnimation(
+                        Color(0xFF444444),
+                      ),
                       minHeight: 2,
                     ),
                   ),
                 ),
               ],
               const Spacer(),
-              Text('${_fontSize.round()}', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 11)),
+              Text(
+                '${_fontSize.round()}',
+                style: GoogleFonts.inter(
+                  color: const Color(0xFF888888),
+                  fontSize: 11,
+                ),
+              ),
             ],
           ),
         ),
@@ -405,7 +520,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final isChapterStart = _isChapterStart(text);
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(24, padding.top + 48, 24, padding.bottom + 8),
+      padding: EdgeInsets.fromLTRB(24, padding.top + 48, 24, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -415,7 +530,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
           ],
           Text(
             text,
-            style: GoogleFonts.inter(color: const Color(0xFFCCCCCC), fontSize: _fontSize, fontWeight: FontWeight.w400, height: 1.7),
+            style: GoogleFonts.inter(
+              color: const Color(0xFFCCCCCC),
+              fontSize: _fontSize,
+              fontWeight: FontWeight.w400,
+              height: 1.7,
+            ),
           ),
         ],
       ),
@@ -434,7 +554,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
       if (text.startsWith('${ch.title}\n')) {
         return Text(
           ch.title,
-          style: GoogleFonts.inter(color: Colors.white, fontSize: _fontSize * 0.7, fontWeight: FontWeight.w500, letterSpacing: 2),
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontSize: _fontSize * 0.7,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 2,
+          ),
         );
       }
     }
