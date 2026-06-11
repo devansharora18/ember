@@ -145,6 +145,8 @@ class _RsvpScreenState extends State<RsvpScreen> {
     final isPaused = !_playing && !isFinished;
     final bg = widget.darkMode ? const Color(0xFF000000) : const Color(0xFFF5F5F0);
     final fg = widget.darkMode ? Colors.white : Colors.black87;
+    final dim = widget.darkMode ? const Color(0xFF888888) : const Color(0xFF999999);
+    final accent = const Color(0xFFE05555);
 
     return GestureDetector(
       onTap: () { setState(() => _controlsVisible = !_controlsVisible); if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); } },
@@ -162,7 +164,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
                 : Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(w, textAlign: TextAlign.center, style: GoogleFonts.getFont(widget.fontFamily, fontSize: 36, fontWeight: FontWeight.w500, color: fg)),
+                      _buildOrpWord(w, fg, dim, accent),
                       if (isPaused) ...[
                         const SizedBox(height: 20),
                         Text('Paused', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 13)),
@@ -178,6 +180,33 @@ class _RsvpScreenState extends State<RsvpScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  int _orpIndex(int length) {
+    if (length <= 1) return 0;
+    return ((length - 1) / 3).floor().clamp(0, 4);
+  }
+
+  Widget _buildOrpWord(String word, Color fg, Color dim, Color accent) {
+    if (word.length <= 1) {
+      return Text(word, textAlign: TextAlign.center, style: GoogleFonts.getFont(widget.fontFamily, fontSize: 36, fontWeight: FontWeight.w500, color: fg));
+    }
+
+    final orp = _orpIndex(word.length);
+    final left = word.substring(0, orp);
+    final focal = word[orp];
+    final right = word.substring(orp + 1);
+
+    final baseStyle = TextStyle(fontFamily: GoogleFonts.getFont(widget.fontFamily).fontFamily, fontSize: 36, fontWeight: FontWeight.w500);
+
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(children: [
+        if (left.isNotEmpty) TextSpan(text: left, style: baseStyle.copyWith(color: fg)),
+        TextSpan(text: focal, style: baseStyle.copyWith(color: accent)),
+        if (right.isNotEmpty) TextSpan(text: right, style: baseStyle.copyWith(color: dim)),
+      ]),
     );
   }
 
