@@ -154,7 +154,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
     final isPaused = !_playing && !isFinished;
     final bg = widget.darkMode ? const Color(0xFF000000) : const Color(0xFFF5F5F0);
     final fg = widget.darkMode ? Colors.white : Colors.black87;
-    final dim = widget.darkMode ? const Color(0xFF888888) : const Color(0xFF999999);
+    final dim = widget.darkMode ? const Color(0xFFBBBBBB) : const Color(0xFF555555);
     final accent = const Color(0xFFE05555);
 
     return GestureDetector(
