@@ -288,7 +288,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   Future<int?> _askRsvpPauseSentences() async {
-    var count = 0;
+    var count = 1;
     return showDialog<int>(
       context: context,
       builder: (ctx) => StatefulBuilder(
