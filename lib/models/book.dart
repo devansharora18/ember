@@ -7,6 +7,7 @@ class Book {
   final Uint8List? coverBytes;
   double progress;
   DateTime? lastOpened;
+  Uint8List? fileBytes;
 
   Book({
     required this.title,
@@ -15,6 +16,7 @@ class Book {
     this.coverBytes,
     this.progress = 0.0,
     this.lastOpened,
+    this.fileBytes,
   });
 
   Book copyWith({
@@ -31,6 +33,7 @@ class Book {
       coverBytes: coverBytes ?? this.coverBytes,
       progress: progress ?? this.progress,
       lastOpened: lastOpened ?? this.lastOpened,
+      fileBytes: fileBytes,
     );
   }
 }

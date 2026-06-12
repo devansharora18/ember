@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/book.dart';
 
 class BookStorage {
+  static bool get _skip => kIsWeb;
+
   static Future<Directory> _dir() async {
     final base = await getApplicationDocumentsDirectory();
     final dir = Directory('${base.path}/ember');
@@ -18,6 +21,7 @@ class BookStorage {
   }
 
   static Future<({List<Book> books, int columns})> loadAll() async {
+    if (_skip) return (books: <Book>[], columns: 3);
     try {
       final dir = await _dir();
       final file = File('${dir.path}/books.json');
@@ -60,6 +64,7 @@ class BookStorage {
   }
 
   static Future<void> saveAll(List<Book> books, int columns) async {
+    if (_skip) return;
     final dir = await _dir();
     final coversDir = Directory('${dir.path}/covers');
     if (!await coversDir.exists()) await coversDir.create(recursive: true);
@@ -91,6 +96,7 @@ class BookStorage {
   }
 
   static Future<void> savePosition(String filePath, int position) async {
+    if (_skip) return;
     try {
       final dir = await _dir();
       final positionsDir = Directory('${dir.path}/positions');
@@ -102,90 +108,47 @@ class BookStorage {
   }
 
   static Future<int> loadPosition(String filePath) async {
-    try {
-      final dir = await _dir();
-      final key = _coverFileName(filePath);
-      final file = File('${dir.path}/positions/$key');
-      if (!await file.exists()) return 0;
-      return int.tryParse(await file.readAsString()) ?? 0;
-    } catch (_) {
-      return 0;
-    }
+    if (_skip) return 0;
+    try { final dir = await _dir(); final key = _coverFileName(filePath); final file = File('${dir.path}/positions/$key'); if (!await file.exists()) return 0; return int.tryParse(await file.readAsString()) ?? 0; } catch (_) { return 0; }
   }
 
   static Future<void> saveFontSize(String filePath, double fontSize) async {
-    try {
-      final dir = await _dir();
-      final file = File('${dir.path}/settings_fontsize');
-      await file.writeAsString(fontSize.toString());
-    } catch (_) {}
+    if (_skip) return;
+    try { final dir = await _dir(); final file = File('${dir.path}/settings_fontsize'); await file.writeAsString(fontSize.toString()); } catch (_) {}
   }
 
   static Future<double?> loadFontSize(String filePath) async {
-    try {
-      final dir = await _dir();
-      final file = File('${dir.path}/settings_fontsize');
-      if (!await file.exists()) return null;
-      return double.tryParse(await file.readAsString());
-    } catch (_) {
-      return null;
-    }
+    if (_skip) return null;
+    try { final dir = await _dir(); final file = File('${dir.path}/settings_fontsize'); if (!await file.exists()) return null; return double.tryParse(await file.readAsString()); } catch (_) { return null; }
   }
 
   static Future<void> saveFontFamily(String filePath, String family) async {
-    try {
-      final dir = await _dir();
-      final file = File('${dir.path}/settings_fontfamily');
-      await file.writeAsString(family);
-    } catch (_) {}
+    if (_skip) return;
+    try { final dir = await _dir(); final file = File('${dir.path}/settings_fontfamily'); await file.writeAsString(family); } catch (_) {}
   }
 
   static Future<String?> loadFontFamily(String filePath) async {
-    try {
-      final dir = await _dir();
-      final file = File('${dir.path}/settings_fontfamily');
-      if (!await file.exists()) return null;
-      return await file.readAsString();
-    } catch (_) {
-      return null;
-    }
+    if (_skip) return null;
+    try { final dir = await _dir(); final file = File('${dir.path}/settings_fontfamily'); if (!await file.exists()) return null; return await file.readAsString(); } catch (_) { return null; }
   }
 
   static Future<void> saveDarkMode(String filePath, bool darkMode) async {
-    try {
-      final dir = await _dir();
-      final file = File('${dir.path}/settings_darkmode');
-      await file.writeAsString(darkMode.toString());
-    } catch (_) {}
+    if (_skip) return;
+    try { final dir = await _dir(); final file = File('${dir.path}/settings_darkmode'); await file.writeAsString(darkMode.toString()); } catch (_) {}
   }
 
   static Future<bool?> loadDarkMode(String filePath) async {
-    try {
-      final dir = await _dir();
-      final file = File('${dir.path}/settings_darkmode');
-      if (!await file.exists()) return null;
-      return await file.readAsString() == 'true';
-    } catch (_) {
-      return null;
-    }
+    if (_skip) return null;
+    try { final dir = await _dir(); final file = File('${dir.path}/settings_darkmode'); if (!await file.exists()) return null; return await file.readAsString() == 'true'; } catch (_) { return null; }
   }
 
   static Future<void> saveRsvpWpm(int wpm) async {
-    try {
-      final dir = await _dir();
-      final file = File('${dir.path}/settings_rsvp_wpm');
-      await file.writeAsString(wpm.toString());
-    } catch (_) {}
+    if (_skip) return;
+    try { final dir = await _dir(); final file = File('${dir.path}/settings_rsvp_wpm'); await file.writeAsString(wpm.toString()); } catch (_) {}
   }
 
   static Future<int?> loadRsvpWpm() async {
-    try {
-      final dir = await _dir();
-      final file = File('${dir.path}/settings_rsvp_wpm');
-      if (!await file.exists()) return null;
-      return int.tryParse(await file.readAsString());
-    } catch (_) {
-      return null;
-    }
+    if (_skip) return null;
+    try { final dir = await _dir(); final file = File('${dir.path}/settings_rsvp_wpm'); if (!await file.exists()) return null; return int.tryParse(await file.readAsString()); } catch (_) { return null; }
   }
 }

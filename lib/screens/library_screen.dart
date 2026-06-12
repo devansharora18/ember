@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,7 +57,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Future<void> _addBooks() async {
     final result = await FilePicker.platform.pickFiles(allowMultiple: true, type: FileType.custom, allowedExtensions: ['pdf', 'epub', 'mobi', 'txt', 'cbz', 'cbr']);
     if (result == null || result.files.isEmpty) return;
-    final paths = result.files.map((f) => f.path).whereType<String>().toList();
+    final paths = <String>[];
+    for (final f in result.files) {
+      if (kIsWeb) {
+        if (f.bytes != null) {
+          ref.read(bookListProvider.notifier).addBookFromBytes(f.name, f.bytes!);
+        }
+      } else if (f.path != null) {
+        paths.add(f.path!);
+      }
+    }
     if (paths.isNotEmpty) ref.read(bookListProvider.notifier).addBooks(paths);
   }
 

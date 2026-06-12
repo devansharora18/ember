@@ -87,7 +87,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   // --------------- Content loading ---------------
 
   Future<void> _loadContent() async {
-    final chapters = await Future(() => EpubParser.extractChapters(widget.book.filePath));
+    final chapters = await Future(() {
+      if (widget.book.fileBytes != null) {
+        return EpubParser.extractChaptersFromBytes(widget.book.fileBytes!);
+      }
+      return EpubParser.extractChapters(widget.book.filePath);
+    });
     final savedPos = await BookStorage.loadPosition(widget.book.filePath);
     final savedFontSize = await BookStorage.loadFontSize(widget.book.filePath);
     final savedFontFamily = await BookStorage.loadFontFamily(widget.book.filePath);

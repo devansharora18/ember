@@ -12,9 +12,11 @@ class BookListNotifier extends Notifier<List<Book>> {
   }
 
   Future<void> _load() async {
-    final data = await BookStorage.loadAll();
-    state = data.books;
-    ref.read(columnsProvider.notifier).state = data.columns;
+    try {
+      final data = await BookStorage.loadAll();
+      state = data.books;
+      ref.read(columnsProvider.notifier).state = data.columns;
+    } catch (_) {}
   }
 
   Future<void> addBooks(List<String> paths) async {
@@ -65,6 +67,14 @@ class BookListNotifier extends Notifier<List<Book>> {
       for (var i = 0; i < state.length; i++)
         if (i == idx) state[i].copyWith(lastOpened: DateTime.now()) else state[i],
     ];
+    _save();
+  }
+
+  void addBookFromBytes(String name, Uint8List bytes) {
+    final meta = EpubParser.parseBytes(bytes);
+    final dot = name.lastIndexOf('.');
+    final title = dot > 0 ? name.substring(0, dot) : name;
+    state = [...state, Book(title: meta.title.isEmpty ? title : meta.title, author: meta.author, filePath: name, coverBytes: meta.coverBytes, fileBytes: bytes)];
     _save();
   }
 

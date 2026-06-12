@@ -29,6 +29,14 @@ class EpubParser {
   static EpubMetadata parse(String filePath) {
     final file = File(filePath);
     final bytes = file.readAsBytesSync();
+    return _parse(bytes, _fileNameToTitle(filePath));
+  }
+
+  static EpubMetadata parseBytes(Uint8List bytes) {
+    return _parse(bytes, 'Book');
+  }
+
+  static EpubMetadata _parse(Uint8List bytes, String fallbackTitle) {
     final archive = ZipDecoder().decodeBytes(bytes);
 
     String? opfPath;
@@ -39,7 +47,7 @@ class EpubParser {
       }
     }
 
-    String title = _fileNameToTitle(filePath);
+    String title = fallbackTitle;
     String author = 'Unknown';
     Uint8List? coverBytes;
 
@@ -60,9 +68,17 @@ class EpubParser {
   }
 
   static List<EpubChapter> extractChapters(String filePath) {
+    final file = File(filePath);
+    final bytes = file.readAsBytesSync();
+    return _extractChapters(bytes);
+  }
+
+  static List<EpubChapter> extractChaptersFromBytes(Uint8List bytes) {
+    return _extractChapters(bytes);
+  }
+
+  static List<EpubChapter> _extractChapters(Uint8List bytes) {
     try {
-      final file = File(filePath);
-      final bytes = file.readAsBytesSync();
       final archive = ZipDecoder().decodeBytes(bytes);
 
       String? opfPath;
