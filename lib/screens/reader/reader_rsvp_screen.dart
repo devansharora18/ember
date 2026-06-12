@@ -186,11 +186,11 @@ class _RsvpScreenState extends State<RsvpScreen> {
 
   void _skip(int count) {
     _timer?.cancel();
+    _scheduleHide();
     final wasPlaying = _playing;
     setState(() {
       _playing = false;
       _index = (_index + count).clamp(0, _words.length - 1);
-      // Recalculate first-word flag for the new position
       _isFirstWordOfSentence = _index == 0 || _isWordSentenceEnd(_words[_index - 1].text);
     });
     if (wasPlaying) {
