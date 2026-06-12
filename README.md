@@ -1,17 +1,38 @@
-# ember
+# Ember
 
-A new Flutter project.
+An e-book reader with RSVP speed reading, built for Android.
 
-## Getting Started
+<p align="center">
+  <video src="screenshots/rsvp.mp4" width="280" controls></video>
+</p>
 
-This project is a starting point for a Flutter application.
+## What it does
 
-A few resources to get you started if this is your first Flutter project:
+**Library** — import EPUBs. Grid view with pinch-to-zoom, search, custom covers, progress tracking, sorted by recently read.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+<p align="center">
+  <img src="screenshots/library.png" width="280" alt="Library">
+</p>
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+**Reader** — page-based swiping, configurable fonts, dark/light mode, double-tap dictionary, table of contents.
+
+<p align="center">
+  <img src="screenshots/reader.png" width="280" alt="Reader">
+</p>
+
+**RSVP** — word-by-word speed reading at 50–400 WPM with ORP focal letter highlighting, per-word timing, and breath pauses.
+
+<p align="center">
+  <img src="screenshots/rsvp.png" width="280" alt="RSVP">
+</p>
+
+## Build
+
+```
+flutter pub get
+flutter build apk --release
+```
+
+## License
+
+GNU GPL v3
