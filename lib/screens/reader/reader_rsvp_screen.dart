@@ -160,9 +160,15 @@ class _RsvpScreenState extends State<RsvpScreen> {
       multiplier += 0.5;
     }
 
-    // 5. Hyphenated compounds
+    // 5. Hyphenated compounds — length-aware per-part penalty
     if (word.contains('-')) {
-      multiplier += 0.4;
+      final parts = word.split('-');
+      double hyphenPenalty = 0;
+      for (final part in parts) {
+        final partLen = part.length;
+        hyphenPenalty += partLen > 5 ? (partLen - 5) * 0.1 : 0.05;
+      }
+      multiplier += hyphenPenalty + 0.3;
     }
 
     // 6. First word of sentence
