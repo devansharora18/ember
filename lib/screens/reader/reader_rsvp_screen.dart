@@ -270,25 +270,44 @@ class _RsvpScreenState extends State<RsvpScreen> {
   }
 
   Widget _buildOrpWord(String word, Color fg, Color dim, Color accent) {
+    if (!word.contains('-')) {
+      return _buildOrpPart(word, fg, dim, accent);
+    }
+
+    final parts = word.split('-');
+    final baseStyle = TextStyle(fontFamily: GoogleFonts.getFont(widget.fontFamily).fontFamily, fontSize: 36, fontWeight: FontWeight.w500);
+
+    final spans = <InlineSpan>[];
+    for (var i = 0; i < parts.length; i++) {
+      if (i > 0) {
+        spans.add(TextSpan(text: '-', style: baseStyle.copyWith(color: dim)));
+      }
+      final part = parts[i];
+      spans.addAll(_buildOrpSpans(part, fg, dim, accent, baseStyle));
+    }
+
+    return RichText(textAlign: TextAlign.center, text: TextSpan(children: spans));
+  }
+
+  Widget _buildOrpPart(String word, Color fg, Color dim, Color accent) {
     if (word.length <= 1) {
       return Text(word, textAlign: TextAlign.center, style: GoogleFonts.getFont(widget.fontFamily, fontSize: 36, fontWeight: FontWeight.w500, color: fg));
     }
+    final baseStyle = TextStyle(fontFamily: GoogleFonts.getFont(widget.fontFamily).fontFamily, fontSize: 36, fontWeight: FontWeight.w500);
+    return RichText(textAlign: TextAlign.center, text: TextSpan(children: _buildOrpSpans(word, fg, dim, accent, baseStyle)));
+  }
 
+  List<InlineSpan> _buildOrpSpans(String word, Color fg, Color dim, Color accent, TextStyle baseStyle) {
     final orp = _orpIndex(word.length);
     final left = word.substring(0, orp);
     final focal = word[orp];
     final right = word.substring(orp + 1);
 
-    final baseStyle = TextStyle(fontFamily: GoogleFonts.getFont(widget.fontFamily).fontFamily, fontSize: 36, fontWeight: FontWeight.w500);
-
-    return RichText(
-      textAlign: TextAlign.center,
-      text: TextSpan(children: [
-        if (left.isNotEmpty) TextSpan(text: left, style: baseStyle.copyWith(color: fg)),
-        TextSpan(text: focal, style: baseStyle.copyWith(color: accent)),
-        if (right.isNotEmpty) TextSpan(text: right, style: baseStyle.copyWith(color: dim)),
-      ]),
-    );
+    return [
+      if (left.isNotEmpty) TextSpan(text: left, style: baseStyle.copyWith(color: fg)),
+      TextSpan(text: focal, style: baseStyle.copyWith(color: accent)),
+      if (right.isNotEmpty) TextSpan(text: right, style: baseStyle.copyWith(color: dim)),
+    ];
   }
 
   @override
