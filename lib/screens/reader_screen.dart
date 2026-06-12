@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/book.dart';
@@ -13,9 +14,7 @@ import 'reader/reader_rsvp_screen.dart';
 
 class ReaderScreen extends ConsumerStatefulWidget {
   final Book book;
-
   const ReaderScreen({super.key, required this.book});
-
   @override
   ConsumerState<ReaderScreen> createState() => _ReaderScreenState();
 }
@@ -40,6 +39,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   Timer? _hideTimer;
   Completer<int?>? _rsvpPickCompleter;
   OverlayEntry? _rsvpOverlay;
+  Offset? _tapPosition;
 
   static const _minFontSize = 12.0;
   static const _maxFontSize = 24.0;
@@ -84,13 +84,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); }
   }
 
-  // --------------- Content loading ---------------
-
   Future<void> _loadContent() async {
     final chapters = await Future(() {
-      if (widget.book.fileBytes != null) {
-        return EpubParser.extractChaptersFromBytes(widget.book.fileBytes!);
-      }
+      if (widget.book.fileBytes != null) return EpubParser.extractChaptersFromBytes(widget.book.fileBytes!);
       return EpubParser.extractChapters(widget.book.filePath);
     });
     final savedPos = await BookStorage.loadPosition(widget.book.filePath);
@@ -134,8 +130,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _scheduleHide();
   }
 
-  // --------------- Page layout ---------------
-
   int _charsPerPage(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final pad = MediaQuery.of(context).padding;
@@ -174,8 +168,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     BookStorage.savePosition(widget.book.filePath, _position);
   }
 
-  // --------------- Font & mode ---------------
-
   TextStyle _textStyle({double? fontSize, Color? color, FontWeight? fontWeight, double? height, double? letterSpacing}) {
     return GoogleFonts.getFont(_fontFamily, fontSize: fontSize ?? _fontSize, fontWeight: fontWeight ?? FontWeight.w400, color: color ?? (_darkMode ? const Color(0xFFCCCCCC) : const Color(0xFF1A1A1A)), height: height, letterSpacing: letterSpacing);
   }
@@ -195,21 +187,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void _handleMenuAction(String value) {
     _hideTimer?.cancel();
     switch (value) {
-      case 'select_font':
-        showReaderFontDialog(context, _fontFamily, _darkMode, widget.book.filePath, (f) => setState(() => _fontFamily = f));
-        _scheduleHide();
-        return;
-      case 'go_to_page':
-        showReaderGoToPageDialog(context, _currentPage, _totalPages, _darkMode, widget.book.coverBytes != null, _pageStarts, widget.book.filePath, _pageController);
-        _scheduleHide();
-        return;
-      case 'rsvp':
-        _openRsvp();
-        return;
-      case 'toggle_mode':
-        setState(() => _darkMode = !_darkMode);
-        BookStorage.saveDarkMode(widget.book.filePath, _darkMode);
-        break;
+      case 'select_font': showReaderFontDialog(context, _fontFamily, _darkMode, widget.book.filePath, (f) => setState(() => _fontFamily = f)); _scheduleHide(); return;
+      case 'go_to_page': showReaderGoToPageDialog(context, _currentPage, _totalPages, _darkMode, widget.book.coverBytes != null, _pageStarts, widget.book.filePath, _pageController); _scheduleHide(); return;
+      case 'rsvp': _openRsvp(); return;
+      case 'toggle_mode': setState(() => _darkMode = !_darkMode); BookStorage.saveDarkMode(widget.book.filePath, _darkMode); break;
     }
     _scheduleHide();
   }
@@ -217,32 +198,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void _openRsvp() async {
     _hideTimer?.cancel();
     setState(() => _controlsVisible = true);
-
     final startPos = await _pickRsvpStartWord();
-    if (startPos == null || !mounted) {
-      _scheduleHide();
-      return;
-    }
-
+    if (startPos == null || !mounted) { _scheduleHide(); return; }
     final pauseSentences = await _askRsvpPauseSentences();
-    if (pauseSentences == null || !mounted) {
-      _scheduleHide();
-      return;
-    }
-
-    final newPos = await Navigator.push<int>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RsvpScreen(
-          fullText: _fullText,
-          startPosition: startPos,
-          totalChars: _totalChars,
-          fontFamily: _fontFamily,
-          darkMode: _darkMode,
-          pauseAfterWords: pauseSentences,
-        ),
-      ),
-    );
+    if (pauseSentences == null || !mounted) { _scheduleHide(); return; }
+    final newPos = await Navigator.push<int>(context, MaterialPageRoute(builder: (_) => RsvpScreen(fullText: _fullText, startPosition: startPos, totalChars: _totalChars, fontFamily: _fontFamily, darkMode: _darkMode, pauseAfterWords: pauseSentences)));
     if (newPos != null && mounted) {
       _position = newPos.clamp(0, _totalChars);
       _currentPage = _findPageForPosition(_position);
@@ -257,79 +217,17 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   Future<int?> _pickRsvpStartWord() async {
     final completer = Completer<int?>();
     late final OverlayEntry overlay;
-
-    overlay = OverlayEntry(
-      builder: (ctx) => Positioned(
-        top: MediaQuery.of(context).padding.top + 56,
-        left: 20, right: 20,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: _darkMode ? const Color(0xEE000000) : const Color(0xEEF5F5F0),
-              border: Border.all(color: _darkMode ? const Color(0xFF444444) : const Color(0xFFAAAAAA)),
-              borderRadius: BorderRadius.zero,
-            ),
-            child: Row(children: [
-              const Icon(Icons.touch_app, size: 16, color: Color(0xFF888888)),
-              const SizedBox(width: 10),
-              Expanded(child: Text('Tap a word to start RSVP from here', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13))),
-              GestureDetector(
-                onTap: () { completer.complete(null); overlay.remove(); },
-                child: const Icon(Icons.close, size: 18, color: Color(0xFF888888)),
-              ),
-            ]),
-          ),
-        ),
-      ),
-    );
-
+    overlay = OverlayEntry(builder: (ctx) => Positioned(top: MediaQuery.of(context).padding.top + 56, left: 20, right: 20, child: Material(color: Colors.transparent, child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), decoration: BoxDecoration(color: _darkMode ? const Color(0xEE000000) : const Color(0xEEF5F5F0), border: Border.all(color: _darkMode ? const Color(0xFF444444) : const Color(0xFFAAAAAA)), borderRadius: BorderRadius.zero), child: Row(children: [const Icon(Icons.touch_app, size: 16, color: Color(0xFF888888)), const SizedBox(width: 10), Expanded(child: Text('Tap a word to start RSVP from here', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13))), GestureDetector(onTap: () { completer.complete(null); overlay.remove(); }, child: const Icon(Icons.close, size: 18, color: Color(0xFF888888)))])))));
     Overlay.of(context).insert(overlay);
     _rsvpPickCompleter = completer;
     _rsvpOverlay = overlay;
-
     return completer.future;
   }
 
   Future<int?> _askRsvpPauseSentences() async {
     var count = 1;
-    return showDialog<int>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setD) => Dialog(
-          backgroundColor: _darkMode ? const Color(0xFF0F0F0F) : const Color(0xFFF0F0EB),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Auto-pause', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-                Text('Pause every N sentences', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 12)),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Text('Off', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11)),
-                  Expanded(child: Slider(value: count.toDouble(), min: 0, max: 20, divisions: 20, activeColor: _darkMode ? Colors.white : Colors.black87, inactiveColor: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: (v) => setD(() => count = v.round()))),
-                  Text('20', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11)),
-                ]),
-                Text(count == 0 ? 'No auto-pause' : 'Every $count sentences', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 16),
-                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 13))),
-                  const SizedBox(width: 8),
-                  TextButton(onPressed: () => Navigator.pop(ctx, count), child: Text('Start', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w600))),
-                ]),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    return showDialog<int>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => Dialog(backgroundColor: _darkMode ? const Color(0xFF0F0F0F) : const Color(0xFFF0F0EB), shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero), child: Padding(padding: const EdgeInsets.fromLTRB(24, 20, 24, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [Text('Auto-pause', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.w600)), const SizedBox(height: 16), Text('Pause every N sentences', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 12)), const SizedBox(height: 8), Row(children: [Text('Off', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11)), Expanded(child: Slider(value: count.toDouble(), min: 0, max: 20, divisions: 20, activeColor: _darkMode ? Colors.white : Colors.black87, inactiveColor: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: (v) => setD(() => count = v.round()))), Text('20', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11))]), Text(count == 0 ? 'No auto-pause' : 'Every $count sentences', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)), const SizedBox(height: 16), Row(mainAxisAlignment: MainAxisAlignment.end, children: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 13))), const SizedBox(width: 8), TextButton(onPressed: () => Navigator.pop(ctx, count), child: Text('Start', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w600)))])])))));
   }
-
-  // --------------- Progress ---------------
 
   void _saveProgress() {
     if (_totalChars <= 0) return;
@@ -337,8 +235,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final idx = ref.read(bookListProvider).indexWhere((b) => b.filePath == widget.book.filePath);
     if (idx != -1) ref.read(bookListProvider.notifier).editBook(idx, progress: p);
   }
-
-  // --------------- Dictionary ---------------
 
   void _handleDoubleTap(TapDownDetails details, String text, GlobalKey textKey) {
     final rb = textKey.currentContext?.findRenderObject() as RenderBox?;
@@ -351,15 +247,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   void _lookupWord(String text, int index) {
-    // Find word boundaries first
     var s = index, e = index;
     final wc = RegExp(r'[\w]');
     while (s > 0 && wc.hasMatch(text[s - 1])) { s--; }
     while (e < text.length && wc.hasMatch(text[e])) { e++; }
-
     if (_rsvpPickCompleter != null) {
-      _rsvpOverlay?.remove();
-      _rsvpOverlay = null;
+      _rsvpOverlay?.remove(); _rsvpOverlay = null;
       final coverCount = widget.book.coverBytes != null ? 1 : 0;
       final page = _pageController.hasClients ? _pageController.page?.round() ?? 0 : 0;
       final textPage = page - coverCount;
@@ -368,7 +261,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       _rsvpPickCompleter = null;
       return;
     }
-
     final word = text.substring(s, e).trim().toLowerCase();
     if (word.length < 2 || word.length > 30) return;
     _hideTimer?.cancel();
@@ -376,20 +268,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     showDialog(context: context, builder: (ctx) => DictionaryDialog(word: word)).then((_) => _scheduleHide());
   }
 
-  // --------------- Build ---------------
-
   @override
   Widget build(BuildContext context) {
     final book = widget.book;
     final bg = _darkMode ? const Color(0xFF000000) : const Color(0xFFF5F5F0);
-    return Scaffold(
-      backgroundColor: bg,
-      body: _loading
-          ? Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(_darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC))))
-          : _chapters.isEmpty
-              ? Center(child: Text('No readable content', style: _textStyle(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 14)))
-              : _buildReader(book, bg),
-    );
+    return Scaffold(backgroundColor: bg, body: _loading ? Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(_darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC)))) : _chapters.isEmpty ? Center(child: Text('No readable content', style: _textStyle(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 14))) : _buildReader(book, bg));
   }
 
   Widget _buildReader(Book book, Color bg) {
@@ -400,71 +283,43 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final pad = MediaQuery.of(context).padding;
     final hasCover = book.coverBytes != null;
 
-    return GestureDetector(
-      onTap: _rsvpPickCompleter != null ? null : _toggleControls,
-      behavior: HitTestBehavior.translucent,
-      child: Stack(
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            onPageChanged: (page) { if (page == 0 && coverCount > 0) { _currentPage = 0; return; } _onPageChanged(page - coverCount); },
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _totalPages + coverCount,
-            itemBuilder: (context, pageIndex) {
-              if (coverCount > 0 && pageIndex == 0) return _buildCoverPage(book, bg);
-              final tp = pageIndex - coverCount;
-              final start = _pageStarts[tp];
-              final end = tp + 1 < _pageStarts.length ? _pageStarts[tp + 1] : _fullText.length;
-              return _buildTextPage(_fullText.substring(start, end), pad);
-            },
-          ),
-          AnimatedOpacity(
-            opacity: _controlsVisible ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 250),
-            child: IgnorePointer(
-              ignoring: !_controlsVisible,
-              child: ReaderAppBar(
-                title: book.title,
-                darkMode: _darkMode,
-                padding: pad,
-                onBack: () { _saveProgress(); Navigator.pop(context); },
-                onDecreaseFont: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); },
-                onIncreaseFont: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); },
-                onShowToc: () {
-                  _hideTimer?.cancel();
-                  showReaderToc(context, _chapters, _chapterStarts, _totalChars, _position, _darkMode, hasCover, _pageController, _pageStarts, _scheduleHide);
-                },
-                onMenuAction: _handleMenuAction,
-                menuItems: [
-                  readerMenuPopItem('RSVP speed read', 'rsvp', _darkMode),
-                  readerMenuPopItem('Select font…', 'select_font', _darkMode),
-                  readerMenuPopItem('Go to page…', 'go_to_page', _darkMode),
-                  readerMenuPopItem(_darkMode ? 'Light mode' : 'Dark mode', 'toggle_mode', _darkMode),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: ReaderBottomBar(
-              currentPage: _currentPage + 1,
-              totalPages: _totalPages,
-              totalChars: _totalChars,
-              position: _position,
-              darkMode: _darkMode,
-              coverCount: coverCount,
-              pageController: _pageController,
-            ),
-          ),
-        ],
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (_, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+            _pageController.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+            _pageController.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Stack(children: [
+      PageView.builder(
+        controller: _pageController,
+        onPageChanged: (page) { if (page == 0 && coverCount > 0) { _currentPage = 0; return; } _onPageChanged(page - coverCount); },
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: _totalPages + coverCount,
+        itemBuilder: (context, pageIndex) {
+          if (coverCount > 0 && pageIndex == 0) return _buildCoverPage(book, bg);
+          final tp = pageIndex - coverCount;
+          final start = _pageStarts[tp];
+          final end = tp + 1 < _pageStarts.length ? _pageStarts[tp + 1] : _fullText.length;
+          return _buildTextPage(_fullText.substring(start, end), pad);
+        },
       ),
-    );
+      Positioned.fill(child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (e) => _tapPosition = e.localPosition, onPointerUp: (e) { if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10 && _rsvpPickCompleter == null) _toggleControls(); _tapPosition = null; })),
+      AnimatedOpacity(opacity: _controlsVisible ? 1.0 : 0.0, duration: const Duration(milliseconds: 250), child: IgnorePointer(ignoring: !_controlsVisible, child: ReaderAppBar(title: book.title, darkMode: _darkMode, padding: pad, onBack: () { _saveProgress(); Navigator.pop(context); }, onDecreaseFont: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); }, onIncreaseFont: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); }, onShowToc: () { _hideTimer?.cancel(); showReaderToc(context, _chapters, _chapterStarts, _totalChars, _position, _darkMode, hasCover, _pageController, _pageStarts, _scheduleHide); }, onMenuAction: _handleMenuAction, menuItems: [readerMenuPopItem('RSVP speed read', 'rsvp', _darkMode), readerMenuPopItem('Select font…', 'select_font', _darkMode), readerMenuPopItem('Go to page…', 'go_to_page', _darkMode), readerMenuPopItem(_darkMode ? 'Light mode' : 'Dark mode', 'toggle_mode', _darkMode)]))),
+      Positioned(bottom: 0, left: 0, right: 0, child: ReaderBottomBar(currentPage: _currentPage + 1, totalPages: _totalPages, totalChars: _totalChars, position: _position, darkMode: _darkMode, coverCount: coverCount, pageController: _pageController)),
+    ]));
   }
 
-  Widget _buildCoverPage(Book book, Color bg) {
-    return Container(color: bg, child: Center(child: Padding(padding: const EdgeInsets.all(24), child: ClipRRect(borderRadius: BorderRadius.zero, child: Image.memory(book.coverBytes!, fit: BoxFit.contain)))));
-  }
+  Widget _buildCoverPage(Book book, Color bg) => Container(color: bg, child: Center(child: Padding(padding: const EdgeInsets.all(24), child: ClipRRect(borderRadius: BorderRadius.zero, child: Image.memory(book.coverBytes!, fit: BoxFit.contain)))));
 
   Widget _buildTextPage(String text, EdgeInsets pad) {
     final isCh = _isChapterStart(text);
@@ -472,27 +327,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     return GestureDetector(
       onDoubleTapDown: (d) => _handleDoubleTap(d, text, textKey),
       onTapDown: _rsvpPickCompleter != null ? (d) => _handleDoubleTap(d, text, textKey) : null,
-      child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(24, pad.top + 48, 24, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isCh) ...[_buildChapterHeader(text), const SizedBox(height: 12)],
-            Text(text, key: textKey, style: _textStyle(height: 1.7)),
-          ],
-        ),
-      ),
+      child: SingleChildScrollView(physics: const NeverScrollableScrollPhysics(), padding: EdgeInsets.fromLTRB(24, pad.top + 48, 24, 0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [if (isCh) ...[_buildChapterHeader(text), const SizedBox(height: 12)], Text(text, key: textKey, style: _textStyle(height: 1.7))])),
     );
   }
 
-  bool _isChapterStart(String text) {
-    for (final ch in _chapters) { if (text.startsWith('${ch.title}\n')) return true; }
-    return false;
-  }
+  bool _isChapterStart(String text) { for (final ch in _chapters) { if (text.startsWith('${ch.title}\n')) return true; } return false; }
 
-  Widget _buildChapterHeader(String text) {
-    for (final ch in _chapters) { if (text.startsWith('${ch.title}\n')) { return Text(ch.title, style: _textStyle(fontSize: _fontSize * 0.7, fontWeight: FontWeight.w500, letterSpacing: 2)); } }
-    return const SizedBox.shrink();
-  }
+  Widget _buildChapterHeader(String text) { for (final ch in _chapters) { if (text.startsWith('${ch.title}\n')) return Text(ch.title, style: _textStyle(fontSize: _fontSize * 0.7, fontWeight: FontWeight.w500, letterSpacing: 2)); } return const SizedBox.shrink(); }
 }
