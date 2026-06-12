@@ -4,31 +4,25 @@ An e-book reader with RSVP speed reading, built for Android.
 
 <div align="center">
 
-
 https://github.com/user-attachments/assets/a25af11f-7ecd-4700-a8cd-d4892eb09ada
-
 
 </div>
 
 ## What it does
 
-**Library** — import EPUBs. Grid view with pinch-to-zoom, search, custom covers, progress tracking, sorted by recently read.
+<table align="center">
+  <tr>
+    <td><img src="screenshots/library.png" width="280"></td>
+    <td><img src="screenshots/reader.png" width="280"></td>
+    <td><img src="screenshots/rsvp.png" width="280"></td>
+  </tr>
+</table>
 
-<p align="center">
-  <img src="screenshots/library.png" width="280" alt="Library">
-</p>
+**Library** — import EPUBs. Grid view with pinch-to-zoom, search, custom covers, progress tracking, sorted by recently read.
 
 **Reader** — page-based swiping, configurable fonts, dark/light mode, double-tap dictionary, table of contents.
 
-<p align="center">
-  <img src="screenshots/reader.png" width="280" alt="Reader">
-</p>
-
 **RSVP** — word-by-word speed reading at 50–400 WPM with ORP focal letter highlighting, per-word timing, and breath pauses.
-
-<p align="center">
-  <img src="screenshots/rsvp.png" width="280" alt="RSVP">
-</p>
 
 ## Build
 
