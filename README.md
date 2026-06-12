@@ -10,13 +10,9 @@ https://github.com/user-attachments/assets/a25af11f-7ecd-4700-a8cd-d4892eb09ada
 
 ## What it does
 
-<table align="center">
-  <tr>
-    <td><img src="screenshots/library.png" width="280"></td>
-    <td><img src="screenshots/reader.png" width="280"></td>
-    <td><img src="screenshots/rsvp.png" width="280"></td>
-  </tr>
-</table>
+| Library | Reader | RSVP |
+|---|---|---|
+| <img src="screenshots/library.png" width="280"> | <img src="screenshots/reader.png" width="280"> | <img src="screenshots/rsvp.png" width="280"> |
 
 **Library** — import EPUBs. Grid view with pinch-to-zoom, search, custom covers, progress tracking, sorted by recently read.
 
