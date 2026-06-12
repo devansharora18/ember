@@ -75,10 +75,11 @@ class _RsvpScreenState extends State<RsvpScreen> {
   }
 
   int _findWordIndex(int charPos) {
+    var result = 0;
     for (var i = 0; i < _words.length; i++) {
-      if (_words[i].startPos >= charPos) return i.clamp(0, _words.length - 1);
+      if (_words[i].startPos <= charPos) { result = i; } else { break; }
     }
-    return _words.length - 1;
+    return result.clamp(0, _words.length - 1);
   }
 
   int get _currentCharPos {
