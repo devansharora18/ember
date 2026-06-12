@@ -2,9 +2,13 @@
 
 An e-book reader with RSVP speed reading, built for Android.
 
-<p align="center">
-  <video src="screenshots/rsvp.mp4" width="280" controls></video>
-</p>
+<div align="center">
+
+
+https://github.com/user-attachments/assets/a25af11f-7ecd-4700-a8cd-d4892eb09ada
+
+
+</div>
 
 ## What it does
 
