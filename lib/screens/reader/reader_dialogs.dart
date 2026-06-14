@@ -56,6 +56,7 @@ void showReaderGoToPageDialog(
 ) {
   final coverOff = hasCover ? 1 : 0;
   var target = currentPage + 1;
+  final originalPage = currentPage;
 
   showDialog(
     context: context,
@@ -81,7 +82,13 @@ void showReaderGoToPageDialog(
                       divisions: (totalPages - 1).clamp(0, 999),
                       activeColor: darkMode ? Colors.white : Colors.black87,
                       inactiveColor: darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC),
-                      onChanged: (v) => setD(() => target = v.round()),
+                      onChanged: (v) {
+                        setD(() => target = v.round());
+                        final tp = v.round() - 1;
+                        if (tp >= 0 && tp < totalPages) {
+                          pageController.jumpToPage(tp + coverOff);
+                        }
+                      },
                     ),
                   ),
                   Text('$totalPages', style: GoogleFonts.inter(color: darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 12)),
@@ -93,14 +100,22 @@ void showReaderGoToPageDialog(
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.inter(color: darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 13))),
+                  TextButton(
+                    onPressed: () {
+                      final tp = originalPage;
+                      if (tp >= 0 && tp < totalPages) {
+                        pageController.jumpToPage(tp + coverOff);
+                      }
+                      Navigator.pop(ctx);
+                    },
+                    child: Text('Cancel', style: GoogleFonts.inter(color: darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 13)),
+                  ),
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: () {
                       Navigator.pop(ctx);
                       final tp = target - 1;
                       if (tp >= 0 && tp < totalPages) {
-                        pageController.jumpToPage(tp + coverOff);
                         BookStorage.savePosition(filePath, pageStarts[tp]);
                       }
                     },
