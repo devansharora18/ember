@@ -120,4 +120,12 @@ class BookStorage {
   static Future<int?> loadRsvpWpm() async {
     try { final v = html.window.localStorage[_key('rsvpwpm')]; return v != null ? int.tryParse(v) : null; } catch (_) { return null; }
   }
+
+  static Future<List<int>> loadBookmarks(String filePath) async {
+    try { final raw = html.window.localStorage[_key('bm_${_coverFileName(filePath)}')]; if (raw == null) return []; return (jsonDecode(raw) as List).map((e) => (e as num).toInt()).toList(); } catch (_) { return []; }
+  }
+
+  static Future<void> saveBookmarks(String filePath, List<int> bookmarks) async {
+    try { html.window.localStorage[_key('bm_${_coverFileName(filePath)}')] = jsonEncode(bookmarks); } catch (_) {}
+  }
 }

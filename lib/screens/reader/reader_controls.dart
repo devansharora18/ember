@@ -9,6 +9,8 @@ class ReaderAppBar extends StatelessWidget {
   final VoidCallback onDecreaseFont;
   final VoidCallback onIncreaseFont;
   final VoidCallback onShowToc;
+  final VoidCallback? onBookmarkToggle;
+  final bool isBookmarked;
   final ValueChanged<String> onMenuAction;
   final List<PopupMenuEntry<String>> menuItems;
 
@@ -21,6 +23,8 @@ class ReaderAppBar extends StatelessWidget {
     required this.onDecreaseFont,
     required this.onIncreaseFont,
     required this.onShowToc,
+    this.onBookmarkToggle,
+    this.isBookmarked = false,
     required this.onMenuAction,
     required this.menuItems,
   });
@@ -43,6 +47,7 @@ class ReaderAppBar extends StatelessWidget {
             ),
             IconButton(icon: Icon(Icons.text_decrease, color: fg, size: 20), onPressed: onDecreaseFont),
             IconButton(icon: Icon(Icons.text_increase, color: fg, size: 20), onPressed: onIncreaseFont),
+            if (onBookmarkToggle != null) IconButton(icon: Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border, color: isBookmarked ? const Color(0xFFE05555) : fg, size: 20), onPressed: onBookmarkToggle),
             IconButton(icon: Icon(Icons.list, color: fg, size: 20), onPressed: onShowToc),
             PopupMenuButton<String>(
               onSelected: onMenuAction,

@@ -136,4 +136,12 @@ class BookStorage {
   static Future<int?> loadRsvpWpm() async {
     try { final dir = await _dir(); final file = File('${dir.path}/settings_rsvp_wpm'); if (!await file.exists()) return null; return int.tryParse(await file.readAsString()); } catch (_) { return null; }
   }
+
+  static Future<List<int>> loadBookmarks(String filePath) async {
+    try { final dir = await _dir(); final key = _coverFileName(filePath); final file = File('${dir.path}/bookmarks/$key'); if (!await file.exists()) return []; final raw = jsonDecode(await file.readAsString()) as List; return raw.map((e) => (e as num).toInt()).toList(); } catch (_) { return []; }
+  }
+
+  static Future<void> saveBookmarks(String filePath, List<int> bookmarks) async {
+    try { final dir = await _dir(); final bmDir = Directory('${dir.path}/bookmarks'); if (!await bmDir.exists()) await bmDir.create(recursive: true); final key = _coverFileName(filePath); final file = File('${bmDir.path}/$key'); await file.writeAsString(jsonEncode(bookmarks)); } catch (_) {}
+  }
 }

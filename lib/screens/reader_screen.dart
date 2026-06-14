@@ -38,6 +38,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   String _fontFamily = 'Inter';
   bool _goToPageMode = false;
   int _goToOriginalPage = 0;
+  List<int> _bookmarks = [];
+  bool _isBookmarked = false;
   Timer? _hideTimer;
   Completer<int?>? _rsvpPickCompleter;
   OverlayEntry? _rsvpOverlay;
@@ -48,390 +50,194 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   static const _autoHideDelay = Duration(seconds: 3);
 
   @override
-  void initState() {
-    super.initState();
-    _pageController.addListener(_onPageScrolling);
-    _loadContent();
-  }
+  void initState() { super.initState(); _pageController.addListener(_onPageScrolling); _loadContent(); }
 
   @override
-  void dispose() {
-    _saveProgress();
-    _pageController.dispose();
-    _hideTimer?.cancel();
-    super.dispose();
-  }
+  void dispose() { _saveProgress(); _pageController.dispose(); _hideTimer?.cancel(); super.dispose(); }
 
   void _onPageScrolling() {
     if (!_pageController.hasClients || !mounted) return;
     final page = _pageController.page;
     if (page == null) return;
-    final coverCount = widget.book.coverBytes != null ? 1 : 0;
-    final rounded = page.round();
-    final textPage = (rounded - coverCount).clamp(0, _pageStarts.length - 1);
-    if (textPage != _currentPage && textPage >= 0 && textPage < _pageStarts.length) {
-      setState(() => _currentPage = textPage);
+    final cc = widget.book.coverBytes != null ? 1 : 0;
+    final tp = (page.round() - cc).clamp(0, _pageStarts.length - 1);
+    if (tp != _currentPage && tp >= 0 && tp < _pageStarts.length) {
+      setState(() { _currentPage = tp; _isBookmarked = _bookmarks.contains(tp); });
     }
   }
 
-  void _scheduleHide() {
-    if (_goToPageMode) return;
-    _hideTimer?.cancel();
-    _hideTimer = Timer(_autoHideDelay, () {
-      if (mounted) setState(() => _controlsVisible = false);
-    });
-  }
+  void _scheduleHide() { if (_goToPageMode) return; _hideTimer?.cancel(); _hideTimer = Timer(_autoHideDelay, () { if (mounted) setState(() => _controlsVisible = false); }); }
 
-  void _toggleControls() {
-    if (_goToPageMode) return;
-    setState(() => _controlsVisible = !_controlsVisible);
-    if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); }
-  }
+  void _toggleControls() { if (_goToPageMode) return; setState(() => _controlsVisible = !_controlsVisible); if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); } }
 
   Future<void> _loadContent() async {
-    final chapters = await Future(() {
-      if (widget.book.fileBytes != null) return EpubParser.extractChaptersFromBytes(widget.book.fileBytes!);
-      return EpubParser.extractChapters(widget.book.filePath);
-    });
+    final chapters = await Future(() { if (widget.book.fileBytes != null) return EpubParser.extractChaptersFromBytes(widget.book.fileBytes!); return EpubParser.extractChapters(widget.book.filePath); });
     final savedPos = await BookStorage.loadPosition(widget.book.filePath);
     final savedFontSize = await BookStorage.loadFontSize(widget.book.filePath);
     final savedFontFamily = await BookStorage.loadFontFamily(widget.book.filePath);
     final savedDarkMode = await BookStorage.loadDarkMode(widget.book.filePath);
+    final bms = await BookStorage.loadBookmarks(widget.book.filePath);
     if (!mounted) return;
 
-    final buf = StringBuffer();
-    final chapterStarts = <int>[];
-    for (final ch in chapters) {
-      chapterStarts.add(buf.length);
-      buf.writeln(ch.title);
-      buf.writeln();
-      buf.writeln(ch.content);
-      buf.writeln();
-    }
-    final text = buf.toString();
-    final totalChars = text.length;
+    final buf = StringBuffer(); final css = <int>[];
+    for (final ch in chapters) { css.add(buf.length); buf.writeln(ch.title); buf.writeln(); buf.writeln(ch.content); buf.writeln(); }
+    final text = buf.toString(); final tc = text.length;
 
     setState(() {
-      _chapters = chapters;
-      _fullText = text;
-      _totalChars = totalChars;
-      _position = savedPos.clamp(0, totalChars);
-      _chapterStarts..clear()..addAll(chapterStarts);
+      _chapters = chapters; _fullText = text; _totalChars = tc; _position = savedPos.clamp(0, tc);
+      _chapterStarts..clear()..addAll(css);
       if (savedFontSize != null) _fontSize = savedFontSize.clamp(_minFontSize, _maxFontSize);
       if (savedFontFamily != null) _fontFamily = savedFontFamily;
       if (savedDarkMode != null) _darkMode = savedDarkMode;
+      _bookmarks = bms; _isBookmarked = bms.contains(_currentPage);
       _loading = false;
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final page = _findPageForPosition(_position);
-      final coverOff = widget.book.coverBytes != null ? 1 : 0;
-      _pageController.jumpToPage(page + coverOff);
-    });
-
+    WidgetsBinding.instance.addPostFrameCallback((_) { if (!mounted) return; final p = _findPageForPosition(_position); final co = widget.book.coverBytes != null ? 1 : 0; _pageController.jumpToPage(p + co); });
     ref.read(bookListProvider.notifier).touchBook(widget.book.filePath);
     _scheduleHide();
   }
 
   int _charsPerPage(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final pad = MediaQuery.of(context).padding;
+    final s = MediaQuery.of(context).size; final p = MediaQuery.of(context).padding;
     final tp = const EdgeInsets.fromLTRB(24, 48, 24, 4);
-    final w = size.width - tp.left - tp.right;
-    final h = size.height - pad.top - pad.bottom - tp.top - tp.bottom;
+    final w = s.width - tp.left - tp.right; final h = s.height - p.top - p.bottom - tp.top - tp.bottom;
     if (w <= 0 || h <= 0) return 1000;
     final painter = TextPainter(text: TextSpan(text: 'X', style: _textStyle(height: 1.7)), textDirection: TextDirection.ltr)..layout(maxWidth: w);
     return (w / painter.width).floor().clamp(1, 999) * (h / painter.height).floor().clamp(1, 999);
   }
 
-  int _findPageForPosition(int position) {
-    for (var i = _pageStarts.length - 1; i >= 0; i--) { if (_pageStarts[i] <= position) return i; }
-    return 0;
-  }
+  int _findPageForPosition(int pos) { for (var i = _pageStarts.length - 1; i >= 0; i--) { if (_pageStarts[i] <= pos) return i; } return 0; }
 
   List<int> _computePageBreaks(int cpp) {
     if (cpp <= 0) return [0];
-    final breaks = <int>[0];
-    while (breaks.last < _fullText.length) {
-      var end = (breaks.last + cpp).clamp(0, _fullText.length);
-      if (end < _fullText.length) {
-        var adj = end;
-        while (adj > breaks.last && adj > end - 80 && _fullText[adj] != ' ' && _fullText[adj] != '\n') { adj--; }
-        if (adj > breaks.last && (_fullText[adj] == ' ' || _fullText[adj] == '\n')) end = adj + 1;
-      }
-      breaks.add(end);
-    }
-    return breaks;
+    final b = <int>[0];
+    while (b.last < _fullText.length) { var e = (b.last + cpp).clamp(0, _fullText.length); if (e < _fullText.length) { var a = e; while (a > b.last && a > e - 80 && _fullText[a] != ' ' && _fullText[a] != '\n') { a--; } if (a > b.last && (_fullText[a] == ' ' || _fullText[a] == '\n')) e = a + 1; } b.add(e); }
+    return b;
   }
 
-  void _onPageChanged(int page) {
-    if (_chapters.isEmpty || page >= _pageStarts.length) return;
-    _currentPage = page;
-    _position = _pageStarts[page];
-    BookStorage.savePosition(widget.book.filePath, _position);
-  }
+  void _onPageChanged(int pg) { if (_chapters.isEmpty || pg >= _pageStarts.length) return; _currentPage = pg; _position = _pageStarts[pg]; _isBookmarked = _bookmarks.contains(pg); BookStorage.savePosition(widget.book.filePath, _position); }
 
   TextStyle _textStyle({double? fontSize, Color? color, FontWeight? fontWeight, double? height, double? letterSpacing}) {
     return GoogleFonts.getFont(_fontFamily, fontSize: fontSize ?? _fontSize, fontWeight: fontWeight ?? FontWeight.w400, color: color ?? (_darkMode ? const Color(0xFFCCCCCC) : const Color(0xFF1A1A1A)), height: height, letterSpacing: letterSpacing);
   }
 
   void _setFontSize(double delta) {
-    final oldPos = _position;
-    final coverOff = widget.book.coverBytes != null ? 1 : 0;
+    final old = _position; final co = widget.book.coverBytes != null ? 1 : 0;
     setState(() => _fontSize = (_fontSize + delta).clamp(_minFontSize, _maxFontSize));
     BookStorage.saveFontSize(widget.book.filePath, _fontSize);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      setState(() { _currentPage = _findPageForPosition(oldPos); _totalPages = _pageStarts.length - 1; });
-      _pageController.jumpToPage(_currentPage + coverOff);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) { if (!mounted) return; setState(() { _currentPage = _findPageForPosition(old); _totalPages = _pageStarts.length - 1; }); _pageController.jumpToPage(_currentPage + co); });
   }
 
-  void _handleMenuAction(String value) {
+  void _toggleBookmark() {
+    setState(() { if (_bookmarks.contains(_currentPage)) { _bookmarks.remove(_currentPage); _isBookmarked = false; } else { _bookmarks.add(_currentPage); _bookmarks.sort(); _isBookmarked = true; } });
+    BookStorage.saveBookmarks(widget.book.filePath, _bookmarks);
+    _controlsVisible = true; _scheduleHide();
+  }
+
+  void _showBookmarks() {
     _hideTimer?.cancel();
-    switch (value) {
+    if (_bookmarks.isEmpty) return;
+    final co = widget.book.coverBytes != null ? 1 : 0;
+    showModalBottomSheet(context: context, backgroundColor: _darkMode ? const Color(0xFF0F0F0F) : const Color(0xFFF0F0EB), shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero), builder: (ctx) => Container(constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 12), child: Text('Bookmarks', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 16, fontWeight: FontWeight.w600))), Container(color: _darkMode ? const Color(0xFF141414) : const Color(0xFFDDDDD8), height: 0.5), Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(vertical: 8), itemCount: _bookmarks.length, itemBuilder: (_, i) { final pg = _bookmarks[i]; return ListTile(dense: true, leading: Icon(Icons.bookmark, size: 16, color: pg == _currentPage ? (_darkMode ? Colors.white : Colors.black87) : (_darkMode ? const Color(0xFF555555) : const Color(0xFF999999))), title: Text('Page ${pg + 1}', style: GoogleFonts.inter(color: pg == _currentPage ? (_darkMode ? Colors.white : Colors.black87) : (_darkMode ? const Color(0xFFAAAAAA) : const Color(0xFF666666)), fontSize: 14)), trailing: IconButton(icon: Icon(Icons.close, size: 16, color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999)), onPressed: () { setState(() { _bookmarks.removeAt(i); _isBookmarked = _bookmarks.contains(_currentPage); }); BookStorage.saveBookmarks(widget.book.filePath, _bookmarks); if (_bookmarks.isEmpty) Navigator.pop(ctx); }), onTap: () { Navigator.pop(ctx); _pageController.jumpToPage(pg + co); _onPageChanged(pg); }); }))]))).then((_) => _scheduleHide());
+  }
+
+  void _handleMenuAction(String v) {
+    _hideTimer?.cancel();
+    switch (v) {
       case 'select_font': showReaderFontDialog(context, _fontFamily, _darkMode, widget.book.filePath, (f) => setState(() => _fontFamily = f)); _scheduleHide(); return;
-      case 'go_to_page':
-        setState(() { _goToPageMode = true; _goToOriginalPage = _currentPage; _controlsVisible = true; });
-        return;
+      case 'go_to_page': setState(() { _goToPageMode = true; _goToOriginalPage = _currentPage; _controlsVisible = true; }); return;
+      case 'bookmarks': _showBookmarks(); return;
       case 'rsvp': _openRsvp(); return;
       case 'toggle_mode': setState(() => _darkMode = !_darkMode); BookStorage.saveDarkMode(widget.book.filePath, _darkMode); break;
     }
     _scheduleHide();
   }
 
-  void _goToPageSliderChanged(double value) {
-    final tp = value.round() - 1;
-    if (tp >= 0 && tp < _totalPages) {
-      final coverOff = widget.book.coverBytes != null ? 1 : 0;
-      _pageController.jumpToPage(tp + coverOff);
-      setState(() => _currentPage = tp);
-    }
-  }
+  void _goToPageSliderChanged(double val) { final tp = val.round() - 1; if (tp >= 0 && tp < _totalPages) { final co = widget.book.coverBytes != null ? 1 : 0; _pageController.jumpToPage(tp + co); setState(() => _currentPage = tp); } }
 
-  void _exitGoToPageMode() {
-    setState(() => _goToPageMode = false);
-    _onPageChanged(_currentPage);
-    _scheduleHide();
-  }
+  void _exitGoToPageMode() { setState(() => _goToPageMode = false); _onPageChanged(_currentPage); _scheduleHide(); }
 
-  void _returnToOriginalPage() {
-    final coverOff = widget.book.coverBytes != null ? 1 : 0;
-    _pageController.jumpToPage(_goToOriginalPage + coverOff);
-    _onPageChanged(_goToOriginalPage);
-    setState(() { _goToPageMode = false; _currentPage = _goToOriginalPage; });
-    _scheduleHide();
-  }
+  void _returnToOriginalPage() { final co = widget.book.coverBytes != null ? 1 : 0; _pageController.jumpToPage(_goToOriginalPage + co); _onPageChanged(_goToOriginalPage); setState(() { _goToPageMode = false; _currentPage = _goToOriginalPage; }); _scheduleHide(); }
 
   void _openRsvp() async {
-    _hideTimer?.cancel();
-    setState(() => _controlsVisible = true);
-    final startPos = await _pickRsvpStartWord();
-    if (startPos == null || !mounted) { _scheduleHide(); return; }
-    final pauseSentences = await _askRsvpPauseSentences();
-    if (pauseSentences == null || !mounted) { _scheduleHide(); return; }
-    final newPos = await Navigator.push<int>(context, MaterialPageRoute(builder: (_) => RsvpScreen(fullText: _fullText, startPosition: startPos, totalChars: _totalChars, fontFamily: _fontFamily, darkMode: _darkMode, pauseAfterWords: pauseSentences)));
-    if (newPos != null && mounted) {
-      _position = newPos.clamp(0, _totalChars);
-      _currentPage = _findPageForPosition(_position);
-      final coverOff = widget.book.coverBytes != null ? 1 : 0;
-      _pageController.jumpToPage(_currentPage + coverOff);
-      BookStorage.savePosition(widget.book.filePath, _position);
-      _saveProgress();
-    }
+    _hideTimer?.cancel(); setState(() => _controlsVisible = true);
+    final sp = await _pickRsvpStartWord(); if (sp == null || !mounted) { _scheduleHide(); return; }
+    final ps = await _askRsvpPauseSentences(); if (ps == null || !mounted) { _scheduleHide(); return; }
+    final np = await Navigator.push<int>(context, MaterialPageRoute(builder: (_) => RsvpScreen(fullText: _fullText, startPosition: sp, totalChars: _totalChars, fontFamily: _fontFamily, darkMode: _darkMode, pauseAfterWords: ps)));
+    if (np != null && mounted) { _position = np.clamp(0, _totalChars); _currentPage = _findPageForPosition(_position); final co = widget.book.coverBytes != null ? 1 : 0; _pageController.jumpToPage(_currentPage + co); BookStorage.savePosition(widget.book.filePath, _position); _saveProgress(); }
     _scheduleHide();
   }
 
   Future<int?> _pickRsvpStartWord() async {
-    final completer = Completer<int?>();
-    late final OverlayEntry overlay;
-    overlay = OverlayEntry(builder: (ctx) => Positioned(top: MediaQuery.of(context).padding.top + 56, left: 20, right: 20, child: Material(color: Colors.transparent, child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), decoration: BoxDecoration(color: _darkMode ? const Color(0xEE000000) : const Color(0xEEF5F5F0), border: Border.all(color: _darkMode ? const Color(0xFF444444) : const Color(0xFFAAAAAA)), borderRadius: BorderRadius.zero), child: Row(children: [const Icon(Icons.touch_app, size: 16, color: Color(0xFF888888)), const SizedBox(width: 10), Expanded(child: Text('Tap a word to start RSVP from here', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13))), GestureDetector(onTap: () { completer.complete(null); overlay.remove(); }, child: const Icon(Icons.close, size: 18, color: Color(0xFF888888)))])))));
-    Overlay.of(context).insert(overlay);
-    _rsvpPickCompleter = completer;
-    _rsvpOverlay = overlay;
-    return completer.future;
+    final c = Completer<int?>(); late final OverlayEntry o;
+    o = OverlayEntry(builder: (_) => Positioned(top: MediaQuery.of(context).padding.top + 56, left: 20, right: 20, child: Material(color: Colors.transparent, child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), decoration: BoxDecoration(color: _darkMode ? const Color(0xEE000000) : const Color(0xEEF5F5F0), border: Border.all(color: _darkMode ? const Color(0xFF444444) : const Color(0xFFAAAAAA)), borderRadius: BorderRadius.zero), child: Row(children: [const Icon(Icons.touch_app, size: 16, color: Color(0xFF888888)), const SizedBox(width: 10), Expanded(child: Text('Tap a word to start RSVP from here', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13))), GestureDetector(onTap: () { c.complete(null); o.remove(); }, child: const Icon(Icons.close, size: 18, color: Color(0xFF888888)))])))));
+    Overlay.of(context).insert(o); _rsvpPickCompleter = c; _rsvpOverlay = o; return c.future;
   }
 
   Future<int?> _askRsvpPauseSentences() async {
-    var count = 1;
-    return showDialog<int>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => Dialog(backgroundColor: _darkMode ? const Color(0xFF0F0F0F) : const Color(0xFFF0F0EB), shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero), child: Padding(padding: const EdgeInsets.fromLTRB(24, 20, 24, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [Text('Auto-pause', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.w600)), const SizedBox(height: 16), Text('Pause every N sentences', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 12)), const SizedBox(height: 8), Row(children: [Text('Off', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11)), Expanded(child: Slider(value: count.toDouble(), min: 0, max: 20, divisions: 20, activeColor: _darkMode ? Colors.white : Colors.black87, inactiveColor: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: (v) => setD(() => count = v.round()))), Text('20', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11))]), Text(count == 0 ? 'No auto-pause' : 'Every $count sentences', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)), const SizedBox(height: 16), Row(mainAxisAlignment: MainAxisAlignment.end, children: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 13))), const SizedBox(width: 8), TextButton(onPressed: () => Navigator.pop(ctx, count), child: Text('Start', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w600)))])])))));
+    var ct = 1;
+    return showDialog<int>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => Dialog(backgroundColor: _darkMode ? const Color(0xFF0F0F0F) : const Color(0xFFF0F0EB), shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero), child: Padding(padding: const EdgeInsets.fromLTRB(24, 20, 24, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [Text('Auto-pause', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.w600)), const SizedBox(height: 16), Text('Pause every N sentences', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 12)), const SizedBox(height: 8), Row(children: [Text('Off', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11)), Expanded(child: Slider(value: ct.toDouble(), min: 0, max: 20, divisions: 20, activeColor: _darkMode ? Colors.white : Colors.black87, inactiveColor: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: (v) => setD(() => ct = v.round()))), Text('20', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11))]), Text(ct == 0 ? 'No auto-pause' : 'Every $ct sentences', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)), const SizedBox(height: 16), Row(mainAxisAlignment: MainAxisAlignment.end, children: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF888888) : const Color(0xFF999999), fontSize: 13))), const SizedBox(width: 8), TextButton(onPressed: () => Navigator.pop(ctx, ct), child: Text('Start', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w600)))])])))));
   }
 
-  void _saveProgress() {
-    if (_totalChars <= 0) return;
-    final p = _position / _totalChars;
-    final idx = ref.read(bookListProvider).indexWhere((b) => b.filePath == widget.book.filePath);
-    if (idx != -1) ref.read(bookListProvider.notifier).editBook(idx, progress: p);
-  }
+  void _saveProgress() { if (_totalChars <= 0) return; final p = _position / _totalChars; final idx = ref.read(bookListProvider).indexWhere((b) => b.filePath == widget.book.filePath); if (idx != -1) ref.read(bookListProvider.notifier).editBook(idx, progress: p); }
 
-  void _handleDoubleTap(TapDownDetails details, String text, GlobalKey textKey) {
-    final rb = textKey.currentContext?.findRenderObject() as RenderBox?;
-    if (rb == null || text.isEmpty) return;
-    final lp = rb.globalToLocal(details.globalPosition);
-    final tp = TextPainter(text: TextSpan(text: text, style: _textStyle(height: 1.7)), textDirection: TextDirection.ltr)..layout(maxWidth: rb.size.width);
-    final pos = tp.getPositionForOffset(lp);
-    if (pos.offset < 0 || pos.offset >= text.length) return;
-    _lookupWord(text, pos.offset);
-  }
+  void _handleDoubleTap(TapDownDetails d, String text, GlobalKey tk) { final rb = tk.currentContext?.findRenderObject() as RenderBox?; if (rb == null || text.isEmpty) return; final lp = rb.globalToLocal(d.globalPosition); final tp = TextPainter(text: TextSpan(text: text, style: _textStyle(height: 1.7)), textDirection: TextDirection.ltr)..layout(maxWidth: rb.size.width); final po = tp.getPositionForOffset(lp); if (po.offset < 0 || po.offset >= text.length) return; _lookupWord(text, po.offset); }
 
-  void _lookupWord(String text, int index) {
-    var s = index, e = index;
-    final wc = RegExp(r'[\w]');
-    while (s > 0 && wc.hasMatch(text[s - 1])) { s--; }
-    while (e < text.length && wc.hasMatch(text[e])) { e++; }
-    if (_rsvpPickCompleter != null) {
-      _rsvpOverlay?.remove(); _rsvpOverlay = null;
-      final coverCount = widget.book.coverBytes != null ? 1 : 0;
-      final page = _pageController.hasClients ? _pageController.page?.round() ?? 0 : 0;
-      final textPage = page - coverCount;
-      final pageStart = textPage >= 0 && textPage < _pageStarts.length - 1 ? _pageStarts[textPage] : 0;
-      _rsvpPickCompleter!.complete(pageStart + s);
-      _rsvpPickCompleter = null;
-      return;
-    }
-    final word = text.substring(s, e).trim().toLowerCase();
-    if (word.length < 2 || word.length > 30) return;
-    _hideTimer?.cancel();
-    setState(() => _controlsVisible = true);
-    showDialog(context: context, builder: (ctx) => DictionaryDialog(word: word)).then((_) => _scheduleHide());
+  void _lookupWord(String text, int idx) {
+    var s = idx, e = idx; final wc = RegExp(r'[\w]');
+    while (s > 0 && wc.hasMatch(text[s - 1])) { s--; } while (e < text.length && wc.hasMatch(text[e])) { e++; }
+    if (_rsvpPickCompleter != null) { _rsvpOverlay?.remove(); _rsvpOverlay = null; final cc = widget.book.coverBytes != null ? 1 : 0; final pg = _pageController.hasClients ? _pageController.page?.round() ?? 0 : 0; final tp = pg - cc; final ps = tp >= 0 && tp < _pageStarts.length - 1 ? _pageStarts[tp] : 0; _rsvpPickCompleter!.complete(ps + s); _rsvpPickCompleter = null; return; }
+    final word = text.substring(s, e).trim().toLowerCase(); if (word.length < 2 || word.length > 30) return;
+    _hideTimer?.cancel(); setState(() => _controlsVisible = true);
+    showDialog(context: context, builder: (_) => DictionaryDialog(word: word)).then((_) => _scheduleHide());
   }
 
   @override
-  Widget build(BuildContext context) {
-    final book = widget.book;
-    final bg = _darkMode ? const Color(0xFF000000) : const Color(0xFFF5F5F0);
-    return Scaffold(backgroundColor: bg, body: _loading ? Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(_darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC)))) : _chapters.isEmpty ? Center(child: Text('No readable content', style: _textStyle(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 14))) : _buildReader(book, bg));
-  }
+  Widget build(BuildContext ctx) { final b = widget.book; final bg = _darkMode ? const Color(0xFF000000) : const Color(0xFFF5F5F0); return Scaffold(backgroundColor: bg, body: _loading ? Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(_darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC)))) : _chapters.isEmpty ? Center(child: Text('No readable content', style: _textStyle(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 14))) : _buildReader(b, bg)); }
 
-  Widget _buildReader(Book book, Color bg) {
-    final cpp = _charsPerPage(context);
-    _pageStarts = _computePageBreaks(cpp);
-    _totalPages = _pageStarts.length - 1;
-    final coverCount = book.coverBytes != null ? 1 : 0;
-    final pad = MediaQuery.of(context).padding;
-    final hasCover = book.coverBytes != null;
-    final scale = _goToPageMode ? 0.85 : 1.0;
+  Widget _buildReader(Book b, Color bg) {
+    final cpp = _charsPerPage(context); _pageStarts = _computePageBreaks(cpp); _totalPages = _pageStarts.length - 1;
+    final cc = b.coverBytes != null ? 1 : 0; final pad = MediaQuery.of(context).padding; final hc = b.coverBytes != null;
+    final sc = _goToPageMode ? 0.85 : 1.0;
 
-    return Focus(
-      autofocus: true,
-      onKeyEvent: (_, event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) { _pageController.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut); return KeyEventResult.handled; }
-          if (event.logicalKey == LogicalKeyboardKey.arrowRight) { _pageController.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut); return KeyEventResult.handled; }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Stack(children: [
-        Transform.scale(
-          scale: scale,
-          child: PageView.builder(
-            controller: _pageController,
-            onPageChanged: (page) { if (page == 0 && coverCount > 0) { _currentPage = 0; return; } _onPageChanged(page - coverCount); },
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _totalPages + coverCount,
-            itemBuilder: (context, pageIndex) {
-              if (coverCount > 0 && pageIndex == 0) return _buildCoverPage(book, bg);
-              final tp = pageIndex - coverCount;
-              final start = _pageStarts[tp];
-              final end = tp + 1 < _pageStarts.length ? _pageStarts[tp + 1] : _fullText.length;
-              return _buildTextPage(_fullText.substring(start, end), pad);
-            },
-          ),
-        ),
-        if (!_goToPageMode) Positioned.fill(child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (e) => _tapPosition = e.localPosition, onPointerUp: (e) { if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10 && _rsvpPickCompleter == null) _toggleControls(); _tapPosition = null; })),
-        if (!_goToPageMode) AnimatedOpacity(opacity: _controlsVisible ? 1.0 : 0.0, duration: const Duration(milliseconds: 250), child: IgnorePointer(ignoring: !_controlsVisible, child: ReaderAppBar(title: book.title, darkMode: _darkMode, padding: pad, onBack: () { _saveProgress(); Navigator.pop(context); }, onDecreaseFont: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); }, onIncreaseFont: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); }, onShowToc: () { _hideTimer?.cancel(); showReaderToc(context, _chapters, _chapterStarts, _totalChars, _position, _darkMode, hasCover, _pageController, _pageStarts, _scheduleHide); }, onMenuAction: _handleMenuAction, menuItems: [readerMenuPopItem('RSVP speed read', 'rsvp', _darkMode), readerMenuPopItem('Select font…', 'select_font', _darkMode), readerMenuPopItem('Go to page…', 'go_to_page', _darkMode), readerMenuPopItem(_darkMode ? 'Light mode' : 'Dark mode', 'toggle_mode', _darkMode)]))),
-        if (!_goToPageMode) Positioned(bottom: 0, left: 0, right: 0, child: ReaderBottomBar(currentPage: _currentPage + 1, totalPages: _totalPages, totalChars: _totalChars, position: _position, darkMode: _darkMode, coverCount: coverCount, pageController: _pageController)),
-        if (_goToPageMode) _buildGoToPageOverlay(pad),
-      ]),
-    );
+    return Focus(autofocus: true, onKeyEvent: (_, e) { if (e is KeyDownEvent) { if (e.logicalKey == LogicalKeyboardKey.arrowLeft) { _pageController.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut); return KeyEventResult.handled; } if (e.logicalKey == LogicalKeyboardKey.arrowRight) { _pageController.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut); return KeyEventResult.handled; } } return KeyEventResult.ignored; }, child: Stack(children: [
+      Transform.scale(scale: sc, child: PageView.builder(controller: _pageController, onPageChanged: (pg) { if (pg == 0 && cc > 0) { _currentPage = 0; return; } _onPageChanged(pg - cc); }, scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(), itemCount: _totalPages + cc, itemBuilder: (_, pi) { if (cc > 0 && pi == 0) return _buildCoverPage(b, bg); final tp = pi - cc; final st = _pageStarts[tp]; final en = tp + 1 < _pageStarts.length ? _pageStarts[tp + 1] : _fullText.length; return _buildTextPage(_fullText.substring(st, en), pad); })),
+      if (!_goToPageMode) Positioned.fill(child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (e) => _tapPosition = e.localPosition, onPointerUp: (e) { if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10 && _rsvpPickCompleter == null) _toggleControls(); _tapPosition = null; })),
+      if (!_goToPageMode) AnimatedOpacity(opacity: _controlsVisible ? 1.0 : 0.0, duration: const Duration(milliseconds: 250), child: IgnorePointer(ignoring: !_controlsVisible, child: ReaderAppBar(title: b.title, darkMode: _darkMode, padding: pad, onBack: () { _saveProgress(); Navigator.pop(context); }, onDecreaseFont: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); }, onIncreaseFont: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); }, onShowToc: () { _hideTimer?.cancel(); showReaderToc(context, _chapters, _chapterStarts, _totalChars, _position, _darkMode, hc, _pageController, _pageStarts, _scheduleHide); }, onBookmarkToggle: _toggleBookmark, isBookmarked: _isBookmarked, onMenuAction: _handleMenuAction, menuItems: [readerMenuPopItem('RSVP speed read', 'rsvp', _darkMode), readerMenuPopItem('Bookmarks', 'bookmarks', _darkMode), readerMenuPopItem('Select font…', 'select_font', _darkMode), readerMenuPopItem('Go to page…', 'go_to_page', _darkMode), readerMenuPopItem(_darkMode ? 'Light mode' : 'Dark mode', 'toggle_mode', _darkMode)]))),
+      if (!_goToPageMode) Positioned(bottom: 0, left: 0, right: 0, child: ReaderBottomBar(currentPage: _currentPage + 1, totalPages: _totalPages, totalChars: _totalChars, position: _position, darkMode: _darkMode, coverCount: cc, pageController: _pageController)),
+      if (_goToPageMode) _buildGoToPageOverlay(pad),
+    ]));
   }
 
   Widget _buildGoToPageOverlay(EdgeInsets pad) {
     final bgColor = _darkMode ? const Color(0xEE000000) : const Color(0xEEF5F5F0);
     final fg = _darkMode ? Colors.white : Colors.black87;
     final dim = _darkMode ? const Color(0xFF888888) : const Color(0xFF666666);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerDown: (e) => _tapPosition = e.localPosition,
-            onPointerUp: (e) {
-              if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10) _exitGoToPageMode();
-              _tapPosition = null;
-            },
-          ),
-        ),
-        Container(
-          padding: EdgeInsets.only(bottom: pad.bottom),
-          color: bgColor,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                child: Row(children: [
-                  GestureDetector(
-                    onTap: _returnToOriginalPage,
-                    child: Container(
-                      width: 48, height: 64,
-                      decoration: BoxDecoration(color: _darkMode ? const Color(0xFF111111) : const Color(0xFFDDDDD8), border: Border.all(color: _goToOriginalPage == _currentPage ? fg : dim)),
-                      child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.history, size: 16, color: dim), const SizedBox(height: 2), Text('${_goToOriginalPage + 1}', style: GoogleFonts.inter(color: dim, fontSize: 9))])),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          Text('Page ${_currentPage + 1}', style: GoogleFonts.inter(color: fg, fontSize: 14, fontWeight: FontWeight.w600)),
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: _exitGoToPageMode,
-                            child: Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC)), child: const Icon(Icons.close, size: 16, color: Colors.white)),
-                          ),
-                        ]),
-                        const SizedBox(height: 4),
-                        Slider(
-                          value: (_currentPage + 1).toDouble().clamp(1, _totalPages.toDouble()),
-                          min: 1,
-                          max: _totalPages.toDouble().clamp(1, 99999),
-                          divisions: (_totalPages - 1).clamp(0, 999),
-                          activeColor: fg,
-                          inactiveColor: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC),
-                          onChanged: _goToPageSliderChanged,
-                        ),
-                      ],
-                    ),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ],
-    );
+    return Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+      Expanded(child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (e) => _tapPosition = e.localPosition, onPointerUp: (e) { if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10) _exitGoToPageMode(); _tapPosition = null; })),
+      Container(padding: EdgeInsets.only(bottom: pad.bottom), color: bgColor, child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Row(children: [
+          GestureDetector(onTap: _returnToOriginalPage, child: Container(width: 48, height: 64, decoration: BoxDecoration(color: _darkMode ? const Color(0xFF111111) : const Color(0xFFDDDDD8), border: Border.all(color: _goToOriginalPage == _currentPage ? fg : dim)), child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.history, size: 16, color: dim), const SizedBox(height: 2), Text('${_goToOriginalPage + 1}', style: GoogleFonts.inter(color: dim, fontSize: 9))])))),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [Text('Page ${_currentPage + 1}', style: GoogleFonts.inter(color: fg, fontSize: 14, fontWeight: FontWeight.w600)), const Spacer(), GestureDetector(onTap: _exitGoToPageMode, child: Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC)), child: const Icon(Icons.close, size: 16, color: Colors.white)))]),
+            const SizedBox(height: 4),
+            Slider(value: (_currentPage + 1).toDouble().clamp(1, _totalPages.toDouble()), min: 1, max: _totalPages.toDouble().clamp(1, 99999), divisions: (_totalPages - 1).clamp(0, 999), activeColor: fg, inactiveColor: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: _goToPageSliderChanged),
+          ])),
+        ])),
+        const SizedBox(height: 8),
+      ])),
+    ]);
   }
 
-  Widget _buildCoverPage(Book book, Color bg) => Container(color: bg, child: Center(child: Padding(padding: const EdgeInsets.all(24), child: ClipRRect(borderRadius: BorderRadius.zero, child: Image.memory(book.coverBytes!, fit: BoxFit.contain)))));
+  Widget _buildCoverPage(Book b, Color bg) => Container(color: bg, child: Center(child: Padding(padding: const EdgeInsets.all(24), child: ClipRRect(borderRadius: BorderRadius.zero, child: Image.memory(b.coverBytes!, fit: BoxFit.contain)))));
 
   Widget _buildTextPage(String text, EdgeInsets pad) {
-    final isCh = _isChapterStart(text);
-    final textKey = GlobalKey();
-    return GestureDetector(
-      onDoubleTapDown: (d) => _handleDoubleTap(d, text, textKey),
-      onTapDown: _rsvpPickCompleter != null ? (d) => _handleDoubleTap(d, text, textKey) : null,
-      child: SingleChildScrollView(physics: const NeverScrollableScrollPhysics(), padding: EdgeInsets.fromLTRB(24, pad.top + 48, 24, 0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [if (isCh) ...[_buildChapterHeader(text), const SizedBox(height: 12)], Text(text, key: textKey, style: _textStyle(height: 1.7))])),
-    );
+    final isCh = _isChapterStart(text); final tk = GlobalKey();
+    return GestureDetector(onDoubleTapDown: (d) => _handleDoubleTap(d, text, tk), onTapDown: _rsvpPickCompleter != null ? (d) => _handleDoubleTap(d, text, tk) : null, child: SingleChildScrollView(physics: const NeverScrollableScrollPhysics(), padding: EdgeInsets.fromLTRB(24, pad.top + 48, 24, 0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [if (isCh) ...[_buildChapterHeader(text), const SizedBox(height: 12)], Text(text, key: tk, style: _textStyle(height: 1.7))])));
   }
 
   bool _isChapterStart(String text) { for (final ch in _chapters) { if (text.startsWith('${ch.title}\n')) return true; } return false; }
-
   Widget _buildChapterHeader(String text) { for (final ch in _chapters) { if (text.startsWith('${ch.title}\n')) return Text(ch.title, style: _textStyle(fontSize: _fontSize * 0.7, fontWeight: FontWeight.w500, letterSpacing: 2)); } return const SizedBox.shrink(); }
 }
