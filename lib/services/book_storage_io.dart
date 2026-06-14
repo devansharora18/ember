@@ -144,4 +144,12 @@ class BookStorage {
   static Future<void> saveBookmarks(String filePath, List<int> bookmarks) async {
     try { final dir = await _dir(); final bmDir = Directory('${dir.path}/bookmarks'); if (!await bmDir.exists()) await bmDir.create(recursive: true); final key = _coverFileName(filePath); final file = File('${bmDir.path}/$key'); await file.writeAsString(jsonEncode(bookmarks)); } catch (_) {}
   }
+
+  static Future<List<Map<String, int>>> loadHighlights(String filePath) async {
+    try { final dir = await _dir(); final key = _coverFileName(filePath); final file = File('${dir.path}/highlights/$key'); if (!await file.exists()) return []; final raw = jsonDecode(await file.readAsString()) as List; return raw.map((e) => Map<String, int>.from(e as Map)).toList(); } catch (_) { return []; }
+  }
+
+  static Future<void> saveHighlights(String filePath, List<Map<String, int>> highlights) async {
+    try { final dir = await _dir(); final hlDir = Directory('${dir.path}/highlights'); if (!await hlDir.exists()) await hlDir.create(recursive: true); final key = _coverFileName(filePath); final file = File('${hlDir.path}/$key'); await file.writeAsString(jsonEncode(highlights)); } catch (_) {}
+  }
 }

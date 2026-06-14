@@ -128,4 +128,12 @@ class BookStorage {
   static Future<void> saveBookmarks(String filePath, List<int> bookmarks) async {
     try { html.window.localStorage[_key('bm_${_coverFileName(filePath)}')] = jsonEncode(bookmarks); } catch (_) {}
   }
+
+  static Future<List<Map<String, int>>> loadHighlights(String filePath) async {
+    try { final raw = html.window.localStorage[_key('hl_${_coverFileName(filePath)}')]; if (raw == null) return []; return (jsonDecode(raw) as List).map((e) => Map<String, int>.from(e as Map)).toList(); } catch (_) { return []; }
+  }
+
+  static Future<void> saveHighlights(String filePath, List<Map<String, int>> highlights) async {
+    try { html.window.localStorage[_key('hl_${_coverFileName(filePath)}')] = jsonEncode(highlights); } catch (_) {}
+  }
 }
