@@ -154,7 +154,19 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _scheduleHide();
   }
 
-  void _goToPageSliderChanged(double val) { final tp = val.round() - 1; if (tp >= 0 && tp < _totalPages) { final co = widget.book.coverBytes != null ? 1 : 0; _pageController.jumpToPage(tp + co); setState(() => _currentPage = tp); } }
+  void _goToPageSliderChanged(double val) {
+    final tp = val.round() - 1;
+    // Snap to nearest bookmark within 2 pages
+    var snapped = tp;
+    for (final bm in _bookmarks) {
+      if ((bm - tp).abs() <= 2) { snapped = bm; break; }
+    }
+    if (snapped >= 0 && snapped < _totalPages) {
+      final co = widget.book.coverBytes != null ? 1 : 0;
+      _pageController.jumpToPage(snapped + co);
+      setState(() => _currentPage = snapped);
+    }
+  }
 
   void _exitGoToPageMode() { setState(() => _goToPageMode = false); _onPageChanged(_currentPage); _scheduleHide(); }
 
@@ -222,6 +234,23 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [Text('Page ${_currentPage + 1}', style: GoogleFonts.inter(color: fg, fontSize: 14, fontWeight: FontWeight.w600)), const Spacer(), GestureDetector(onTap: _exitGoToPageMode, child: Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC)), child: const Icon(Icons.close, size: 16, color: Colors.white)))]),
+            const SizedBox(height: 4),
+            if (_bookmarks.isNotEmpty)
+              SizedBox(
+                height: 8,
+                child: LayoutBuilder(builder: (_, constraints) {
+                  final w = constraints.maxWidth;
+                  return Stack(
+                    children: _bookmarks.map((bm) {
+                      final frac = (bm + 1) / _totalPages;
+                      return Positioned(
+                        left: (frac * w).clamp(4.0, w - 4.0) - 3,
+                        child: Icon(Icons.bookmark, size: 8, color: _currentPage == bm ? (_darkMode ? Colors.white : Colors.black87) : dim),
+                      );
+                    }).toList(),
+                  );
+                }),
+              ),
             const SizedBox(height: 4),
             Slider(value: (_currentPage + 1).toDouble().clamp(1, _totalPages.toDouble()), min: 1, max: _totalPages.toDouble().clamp(1, 99999), divisions: (_totalPages - 1).clamp(0, 999), activeColor: fg, inactiveColor: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC), onChanged: _goToPageSliderChanged),
           ])),
