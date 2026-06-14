@@ -329,7 +329,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
             controller: _pageController,
             onPageChanged: (page) { if (page == 0 && coverCount > 0) { _currentPage = 0; return; } _onPageChanged(page - coverCount); },
             scrollDirection: Axis.horizontal,
-            physics: _goToPageMode ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
+            physics: const BouncingScrollPhysics(),
             itemCount: _totalPages + coverCount,
             itemBuilder: (context, pageIndex) {
               if (coverCount > 0 && pageIndex == 0) return _buildCoverPage(book, bg);
@@ -357,9 +357,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Expanded(
-          child: GestureDetector(
-            onTap: _exitGoToPageMode,
+          child: Listener(
             behavior: HitTestBehavior.translucent,
+            onPointerDown: (e) => _tapPosition = e.localPosition,
+            onPointerUp: (e) {
+              if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10) _exitGoToPageMode();
+              _tapPosition = null;
+            },
           ),
         ),
         Container(
