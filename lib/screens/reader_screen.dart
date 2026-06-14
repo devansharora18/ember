@@ -36,6 +36,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   bool _controlsVisible = true;
   bool _darkMode = true;
   String _fontFamily = 'Inter';
+  bool _goToPageMode = false;
+  int _goToOriginalPage = 0;
   Timer? _hideTimer;
   Completer<int?>? _rsvpPickCompleter;
   OverlayEntry? _rsvpOverlay;
@@ -73,6 +75,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   void _scheduleHide() {
+    if (_goToPageMode) return;
     _hideTimer?.cancel();
     _hideTimer = Timer(_autoHideDelay, () {
       if (mounted) setState(() => _controlsVisible = false);
@@ -80,6 +83,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   void _toggleControls() {
+    if (_goToPageMode) return;
     setState(() => _controlsVisible = !_controlsVisible);
     if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); }
   }
@@ -188,10 +192,35 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _hideTimer?.cancel();
     switch (value) {
       case 'select_font': showReaderFontDialog(context, _fontFamily, _darkMode, widget.book.filePath, (f) => setState(() => _fontFamily = f)); _scheduleHide(); return;
-      case 'go_to_page': showReaderGoToPageDialog(context, _currentPage, _totalPages, _darkMode, widget.book.coverBytes != null, _pageStarts, widget.book.filePath, _pageController); _scheduleHide(); return;
+      case 'go_to_page':
+        setState(() { _goToPageMode = true; _goToOriginalPage = _currentPage; _controlsVisible = true; });
+        return;
       case 'rsvp': _openRsvp(); return;
       case 'toggle_mode': setState(() => _darkMode = !_darkMode); BookStorage.saveDarkMode(widget.book.filePath, _darkMode); break;
     }
+    _scheduleHide();
+  }
+
+  void _goToPageSliderChanged(double value) {
+    final tp = value.round() - 1;
+    if (tp >= 0 && tp < _totalPages) {
+      final coverOff = widget.book.coverBytes != null ? 1 : 0;
+      _pageController.jumpToPage(tp + coverOff);
+      setState(() => _currentPage = tp);
+    }
+  }
+
+  void _exitGoToPageMode() {
+    setState(() => _goToPageMode = false);
+    _onPageChanged(_currentPage);
+    _scheduleHide();
+  }
+
+  void _returnToOriginalPage() {
+    final coverOff = widget.book.coverBytes != null ? 1 : 0;
+    _pageController.jumpToPage(_goToOriginalPage + coverOff);
+    _onPageChanged(_goToOriginalPage);
+    setState(() { _goToPageMode = false; _currentPage = _goToOriginalPage; });
     _scheduleHide();
   }
 
@@ -282,41 +311,108 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final coverCount = book.coverBytes != null ? 1 : 0;
     final pad = MediaQuery.of(context).padding;
     final hasCover = book.coverBytes != null;
+    final scale = _goToPageMode ? 0.85 : 1.0;
 
     return Focus(
       autofocus: true,
       onKeyEvent: (_, event) {
         if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-            _pageController.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
-            return KeyEventResult.handled;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-            _pageController.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
-            return KeyEventResult.handled;
-          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) { _pageController.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut); return KeyEventResult.handled; }
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight) { _pageController.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut); return KeyEventResult.handled; }
         }
         return KeyEventResult.ignored;
       },
       child: Stack(children: [
-      PageView.builder(
-        controller: _pageController,
-        onPageChanged: (page) { if (page == 0 && coverCount > 0) { _currentPage = 0; return; } _onPageChanged(page - coverCount); },
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: _totalPages + coverCount,
-        itemBuilder: (context, pageIndex) {
-          if (coverCount > 0 && pageIndex == 0) return _buildCoverPage(book, bg);
-          final tp = pageIndex - coverCount;
-          final start = _pageStarts[tp];
-          final end = tp + 1 < _pageStarts.length ? _pageStarts[tp + 1] : _fullText.length;
-          return _buildTextPage(_fullText.substring(start, end), pad);
-        },
-      ),
-      Positioned.fill(child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (e) => _tapPosition = e.localPosition, onPointerUp: (e) { if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10 && _rsvpPickCompleter == null) _toggleControls(); _tapPosition = null; })),
-      AnimatedOpacity(opacity: _controlsVisible ? 1.0 : 0.0, duration: const Duration(milliseconds: 250), child: IgnorePointer(ignoring: !_controlsVisible, child: ReaderAppBar(title: book.title, darkMode: _darkMode, padding: pad, onBack: () { _saveProgress(); Navigator.pop(context); }, onDecreaseFont: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); }, onIncreaseFont: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); }, onShowToc: () { _hideTimer?.cancel(); showReaderToc(context, _chapters, _chapterStarts, _totalChars, _position, _darkMode, hasCover, _pageController, _pageStarts, _scheduleHide); }, onMenuAction: _handleMenuAction, menuItems: [readerMenuPopItem('RSVP speed read', 'rsvp', _darkMode), readerMenuPopItem('Select font…', 'select_font', _darkMode), readerMenuPopItem('Go to page…', 'go_to_page', _darkMode), readerMenuPopItem(_darkMode ? 'Light mode' : 'Dark mode', 'toggle_mode', _darkMode)]))),
-      Positioned(bottom: 0, left: 0, right: 0, child: ReaderBottomBar(currentPage: _currentPage + 1, totalPages: _totalPages, totalChars: _totalChars, position: _position, darkMode: _darkMode, coverCount: coverCount, pageController: _pageController)),
-    ]));
+        Transform.scale(
+          scale: scale,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (page) { if (page == 0 && coverCount > 0) { _currentPage = 0; return; } _onPageChanged(page - coverCount); },
+            scrollDirection: Axis.horizontal,
+            physics: _goToPageMode ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
+            itemCount: _totalPages + coverCount,
+            itemBuilder: (context, pageIndex) {
+              if (coverCount > 0 && pageIndex == 0) return _buildCoverPage(book, bg);
+              final tp = pageIndex - coverCount;
+              final start = _pageStarts[tp];
+              final end = tp + 1 < _pageStarts.length ? _pageStarts[tp + 1] : _fullText.length;
+              return _buildTextPage(_fullText.substring(start, end), pad);
+            },
+          ),
+        ),
+        if (!_goToPageMode) Positioned.fill(child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (e) => _tapPosition = e.localPosition, onPointerUp: (e) { if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10 && _rsvpPickCompleter == null) _toggleControls(); _tapPosition = null; })),
+        if (!_goToPageMode) AnimatedOpacity(opacity: _controlsVisible ? 1.0 : 0.0, duration: const Duration(milliseconds: 250), child: IgnorePointer(ignoring: !_controlsVisible, child: ReaderAppBar(title: book.title, darkMode: _darkMode, padding: pad, onBack: () { _saveProgress(); Navigator.pop(context); }, onDecreaseFont: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); }, onIncreaseFont: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); }, onShowToc: () { _hideTimer?.cancel(); showReaderToc(context, _chapters, _chapterStarts, _totalChars, _position, _darkMode, hasCover, _pageController, _pageStarts, _scheduleHide); }, onMenuAction: _handleMenuAction, menuItems: [readerMenuPopItem('RSVP speed read', 'rsvp', _darkMode), readerMenuPopItem('Select font…', 'select_font', _darkMode), readerMenuPopItem('Go to page…', 'go_to_page', _darkMode), readerMenuPopItem(_darkMode ? 'Light mode' : 'Dark mode', 'toggle_mode', _darkMode)]))),
+        if (!_goToPageMode) Positioned(bottom: 0, left: 0, right: 0, child: ReaderBottomBar(currentPage: _currentPage + 1, totalPages: _totalPages, totalChars: _totalChars, position: _position, darkMode: _darkMode, coverCount: coverCount, pageController: _pageController)),
+        if (_goToPageMode) _buildGoToPageOverlay(pad),
+      ]),
+    );
+  }
+
+  Widget _buildGoToPageOverlay(EdgeInsets pad) {
+    final bgColor = _darkMode ? const Color(0xEE000000) : const Color(0xEEF5F5F0);
+    final fg = _darkMode ? Colors.white : Colors.black87;
+    final dim = _darkMode ? const Color(0xFF888888) : const Color(0xFF666666);
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: _exitGoToPageMode,
+            behavior: HitTestBehavior.translucent,
+          ),
+        ),
+        Container(
+          padding: EdgeInsets.only(bottom: pad.bottom),
+          color: bgColor,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Row(children: [
+                  GestureDetector(
+                    onTap: _returnToOriginalPage,
+                    child: Container(
+                      width: 48, height: 64,
+                      decoration: BoxDecoration(color: _darkMode ? const Color(0xFF111111) : const Color(0xFFDDDDD8), border: Border.all(color: _goToOriginalPage == _currentPage ? fg : dim)),
+                      child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.history, size: 16, color: dim), const SizedBox(height: 2), Text('${_goToOriginalPage + 1}', style: GoogleFonts.inter(color: dim, fontSize: 9))])),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Text('Page ${_currentPage + 1}', style: GoogleFonts.inter(color: fg, fontSize: 14, fontWeight: FontWeight.w600)),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: _exitGoToPageMode,
+                            child: Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC)), child: const Icon(Icons.close, size: 16, color: Colors.white)),
+                          ),
+                        ]),
+                        const SizedBox(height: 4),
+                        Slider(
+                          value: (_currentPage + 1).toDouble().clamp(1, _totalPages.toDouble()),
+                          min: 1,
+                          max: _totalPages.toDouble().clamp(1, 99999),
+                          divisions: (_totalPages - 1).clamp(0, 999),
+                          activeColor: fg,
+                          inactiveColor: _darkMode ? const Color(0xFF333333) : const Color(0xFFCCCCCC),
+                          onChanged: _goToPageSliderChanged,
+                        ),
+                      ],
+                    ),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildCoverPage(Book book, Color bg) => Container(color: bg, child: Center(child: Padding(padding: const EdgeInsets.all(24), child: ClipRRect(borderRadius: BorderRadius.zero, child: Image.memory(book.coverBytes!, fit: BoxFit.contain)))));
