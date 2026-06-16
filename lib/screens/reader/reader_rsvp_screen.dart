@@ -36,15 +36,19 @@ class _RsvpScreenState extends State<RsvpScreen> {
   bool _isFirstWordOfSentence = true;
   bool _showBlank = false;
   late final List<_Word> _words;
+  late final TextStyle _measuredStyle;
+  final TextPainter _measurer = TextPainter(textDirection: TextDirection.ltr);
 
   static const _minWpm = 50;
   static const _maxWpm = 400;
   static const _autoHideDelay = Duration(seconds: 3);
+  static const double _wordSpacing = 10.0;
 
   @override
   void initState() {
     super.initState();
     _words = _tokenize(widget.fullText);
+    _measuredStyle = GoogleFonts.getFont(widget.fontFamily, fontSize: 32, fontWeight: FontWeight.w400);
     _index = _findWordIndex(widget.startPosition);
     _isFirstWordOfSentence = _index == 0 || _isWordSentenceEnd(_words[_index - 1].text);
     _loadWpm();
@@ -232,72 +236,99 @@ class _RsvpScreenState extends State<RsvpScreen> {
     if (_words.isEmpty) return const SizedBox.shrink();
     if (_showBlank) return Container(color: widget.darkMode ? const Color(0xFF000000) : const Color(0xFFF5F5F0));
 
-    final w = _words[_index.clamp(0, _words.length - 1)].text;
     final isFinished = _words.length > 1 && _index >= _words.length - 1;
     final isPaused = !_playing && !isFinished;
     final bg = widget.darkMode ? const Color(0xFF000000) : const Color(0xFFF5F5F0);
     final fg = widget.darkMode ? Colors.white : Colors.black87;
-    final dim = widget.darkMode ? const Color(0xFFBBBBBB) : const Color(0xFF555555);
-    final accent = const Color(0xFFE05555);
 
     return GestureDetector(
       onTap: () { setState(() => _controlsVisible = !_controlsVisible); if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); } },
       child: Container(
         color: bg,
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: isFinished
-                ? Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.check_circle, size: 48, color: Color(0xFF444444)),
-                    const SizedBox(height: 16),
-                    Text('Finished', style: GoogleFonts.getFont(widget.fontFamily, fontSize: 18, color: const Color(0xFF555555))),
-                  ])
-                : Column(mainAxisSize: MainAxisSize.min, children: [
-                    _buildOrpWord(w, fg, dim, accent),
-                    if (isPaused) ...[
-                      const SizedBox(height: 20),
-                      Text('Paused', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 13)),
-                      const SizedBox(height: 8),
-                      TextButton.icon(onPressed: _togglePlaying, icon: const Icon(Icons.play_arrow, size: 16, color: Color(0xFF888888)), label: Text('Resume', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 13))),
-                    ],
-                  ]),
-          ),
+          child: isFinished
+              ? Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.check_circle, size: 48, color: Color(0xFF444444)),
+                  const SizedBox(height: 16),
+                  Text('Finished', style: GoogleFonts.getFont(widget.fontFamily, fontSize: 18, color: const Color(0xFF555555))),
+                ])
+              : Column(mainAxisSize: MainAxisSize.min, children: [
+                  _buildWordStrip(fg),
+                  if (isPaused) ...[
+                    const SizedBox(height: 20),
+                    Text('Paused', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 13)),
+                    const SizedBox(height: 8),
+                    TextButton.icon(onPressed: _togglePlaying, icon: const Icon(Icons.play_arrow, size: 16, color: Color(0xFF888888)), label: Text('Resume', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 13))),
+                  ],
+                ]),
         ),
       ),
     );
   }
 
-  int _orpIndex(int length) {
-    if (length <= 1) return 0;
-    return ((length - 1) / 3).floor().clamp(0, 4);
+  Widget _buildWordStrip(Color fg) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const int windowRadius = 8;
+        final startIdx = (_index - windowRadius).clamp(0, _words.length);
+        final endIdx = (_index + windowRadius + 1).clamp(0, _words.length);
+
+        var leadingWidth = 0.0;
+        for (int i = startIdx; i < _index; i++) {
+          _measurer.text = TextSpan(text: _words[i].text, style: _measuredStyle);
+          _measurer.layout();
+          leadingWidth += _measurer.width + _wordSpacing;
+        }
+        _measurer.text = TextSpan(text: _words[_index].text, style: _measuredStyle);
+        _measurer.layout();
+        final currentWidth = _measurer.width;
+        final stripOffset = constraints.maxWidth / 2 - leadingWidth - currentWidth / 2;
+
+        return SizedBox(
+          height: 56,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 100),
+                curve: Curves.easeOut,
+                left: stripOffset,
+                top: 0,
+                bottom: 0,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [for (int i = startIdx; i < endIdx; i++) _buildWordWidget(i, fg)],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildOrpWord(String word, Color fg, Color dim, Color accent) {
-    if (!word.contains('-')) return _buildOrpPart(word, fg, dim, accent);
-
-    final parts = word.split('-');
-    final baseStyle = TextStyle(fontFamily: GoogleFonts.getFont(widget.fontFamily).fontFamily, fontSize: 36, fontWeight: FontWeight.w500);
-    final spans = <InlineSpan>[];
-    for (var i = 0; i < parts.length; i++) {
-      if (i > 0) spans.add(TextSpan(text: '-', style: baseStyle.copyWith(color: dim)));
-      spans.addAll(_buildOrpSpans(parts[i], fg, dim, accent, baseStyle));
-    }
-    return RichText(textAlign: TextAlign.center, text: TextSpan(children: spans));
-  }
-
-  Widget _buildOrpPart(String word, Color fg, Color dim, Color accent) {
-    if (word.length <= 1) return Text(word, textAlign: TextAlign.center, style: GoogleFonts.getFont(widget.fontFamily, fontSize: 36, fontWeight: FontWeight.w500, color: fg));
-    final baseStyle = TextStyle(fontFamily: GoogleFonts.getFont(widget.fontFamily).fontFamily, fontSize: 36, fontWeight: FontWeight.w500);
-    return RichText(textAlign: TextAlign.center, text: TextSpan(children: _buildOrpSpans(word, fg, dim, accent, baseStyle)));
-  }
-
-  List<InlineSpan> _buildOrpSpans(String word, Color fg, Color dim, Color accent, TextStyle baseStyle) {
-    final orp = _orpIndex(word.length);
-    final left = word.substring(0, orp);
-    final focal = word[orp];
-    final right = word.substring(orp + 1);
-    return [if (left.isNotEmpty) TextSpan(text: left, style: baseStyle.copyWith(color: fg)), TextSpan(text: focal, style: baseStyle.copyWith(color: accent)), if (right.isNotEmpty) TextSpan(text: right, style: baseStyle.copyWith(color: dim))];
+  Widget _buildWordWidget(int i, Color fg) {
+    final word = _words[i].text;
+    final distance = (i - _index).abs();
+    final opacity = i == _index ? 1.0 : (distance == 1 ? 0.7 : (distance == 2 ? 0.45 : 0.25));
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: _wordSpacing / 2),
+      child: AnimatedOpacity(
+        opacity: opacity,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Text(
+          word,
+          style: GoogleFonts.getFont(
+            widget.fontFamily,
+            fontSize: 32,
+            fontWeight: i == _index ? FontWeight.w600 : FontWeight.w400,
+            color: fg,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
