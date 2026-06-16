@@ -126,7 +126,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
           if (!mounted || !_playing) return;
           _index++;
           setState(() {
-            if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords) {
+            if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords && !_holding) {
               _playing = false; _sentencesSincePause = 0; _isFirstWordOfSentence = true;
               return;
             }
@@ -145,7 +145,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
           if (isSentenceEnd) { _sentencesSincePause++; }
         }
       });
-      if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords) {
+      if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords && !_holding) {
         setState(() { _playing = false; _sentencesSincePause = 0; _isFirstWordOfSentence = true; });
         return;
       }
@@ -240,9 +240,24 @@ class _RsvpScreenState extends State<RsvpScreen> {
 
     return GestureDetector(
       onTap: () { setState(() => _controlsVisible = !_controlsVisible); if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); } },
-      onLongPressStart: (_) { _holding = true; if (!_playing) _togglePlaying(); },
-      onLongPressEnd: (_) { if (_holding) { _holding = false; if (_playing) _togglePlaying(); } },
-      onLongPressCancel: () { _holding = false; if (_playing) _togglePlaying(); },
+      onLongPressStart: (_) {
+        _holding = true;
+        _timer?.cancel();
+        if (!_playing) {
+          setState(() => _playing = true);
+          _tick();
+        }
+      },
+      onLongPressEnd: (_) {
+        _holding = false;
+        _timer?.cancel();
+        setState(() => _playing = false);
+      },
+      onLongPressCancel: () {
+        _holding = false;
+        _timer?.cancel();
+        setState(() => _playing = false);
+      },
       child: Container(
         color: bg,
         child: Center(
