@@ -34,6 +34,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   Timer? _hideTimer;
   int _sentencesSincePause = 0;
   bool _isFirstWordOfSentence = true;
+  bool _holding = false;
   late final List<_Word> _words;
   late final TextStyle _measuredStyle;
   final TextPainter _measurer = TextPainter(textDirection: TextDirection.ltr);
@@ -99,6 +100,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
 
   void _togglePlaying() {
     _timer?.cancel();
+    _holding = false;
     if (_playing) {
       setState(() { _playing = false; _sentencesSincePause = 0; });
       return;
@@ -238,6 +240,9 @@ class _RsvpScreenState extends State<RsvpScreen> {
 
     return GestureDetector(
       onTap: () { setState(() => _controlsVisible = !_controlsVisible); if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); } },
+      onLongPressStart: (_) { _holding = true; if (!_playing) _togglePlaying(); },
+      onLongPressEnd: (_) { if (_holding) { _holding = false; if (_playing) _togglePlaying(); } },
+      onLongPressCancel: () { _holding = false; if (_playing) _togglePlaying(); },
       child: Container(
         color: bg,
         child: Center(
@@ -251,7 +256,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
                   _buildWordStrip(fg),
                   if (isPaused) ...[
                     const SizedBox(height: 20),
-                    Text('Paused', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 13)),
+                    Text('Paused — hold to read', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 13)),
                     const SizedBox(height: 8),
                     TextButton.icon(onPressed: _togglePlaying, icon: const Icon(Icons.play_arrow, size: 16, color: Color(0xFF888888)), label: Text('Resume', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 13))),
                   ],
