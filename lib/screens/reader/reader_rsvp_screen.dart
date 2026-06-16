@@ -321,7 +321,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
     return [
       if (left.isNotEmpty) TextSpan(text: left, style: baseStyle.copyWith(color: fg)),
       TextSpan(text: focal, style: baseStyle.copyWith(color: accent)),
-      if (right.isNotEmpty) TextSpan(text: right, style: baseStyle.copyWith(color: dim)),
+      if (right.isNotEmpty) TextSpan(text: right, style: baseStyle.copyWith(color: fg)),
     ];
   }
 
