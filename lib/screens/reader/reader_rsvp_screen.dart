@@ -34,7 +34,6 @@ class _RsvpScreenState extends State<RsvpScreen> {
   Timer? _hideTimer;
   int _sentencesSincePause = 0;
   bool _isFirstWordOfSentence = true;
-  bool _showBlank = false;
   late final List<_Word> _words;
   late final TextStyle _measuredStyle;
   final TextPainter _measurer = TextPainter(textDirection: TextDirection.ltr);
@@ -101,7 +100,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   void _togglePlaying() {
     _timer?.cancel();
     if (_playing) {
-      setState(() { _playing = false; _sentencesSincePause = 0; _showBlank = false; });
+      setState(() { _playing = false; _sentencesSincePause = 0; });
       return;
     }
     setState(() => _playing = true);
@@ -120,18 +119,16 @@ class _RsvpScreenState extends State<RsvpScreen> {
 
       final breathMs = _punctuationBreath(word);
       if (breathMs > 0) {
-        _index++;
-        setState(() {
-          _showBlank = true;
-          if (_isWordSentenceEnd(word)) { _sentencesSincePause++; _isFirstWordOfSentence = true; }
-        });
+        if (_isWordSentenceEnd(word)) { _sentencesSincePause++; _isFirstWordOfSentence = true; }
         _timer = Timer(Duration(milliseconds: breathMs), () {
           if (!mounted || !_playing) return;
-          setState(() => _showBlank = false);
-          if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords) {
-            setState(() { _playing = false; _sentencesSincePause = 0; _isFirstWordOfSentence = true; _showBlank = false; });
-            return;
-          }
+          _index++;
+          setState(() {
+            if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords) {
+              _playing = false; _sentencesSincePause = 0; _isFirstWordOfSentence = true;
+              return;
+            }
+          });
           _tick();
         });
         return;
@@ -147,7 +144,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
         }
       });
       if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords) {
-        setState(() { _playing = false; _sentencesSincePause = 0; _isFirstWordOfSentence = true; _showBlank = false; });
+        setState(() { _playing = false; _sentencesSincePause = 0; _isFirstWordOfSentence = true; });
         return;
       }
       _tick();
@@ -211,7 +208,6 @@ class _RsvpScreenState extends State<RsvpScreen> {
     final wasPlaying = _playing;
     setState(() {
       _playing = false;
-      _showBlank = false;
       _index = (_index + count).clamp(0, _words.length - 1);
       _isFirstWordOfSentence = _index == 0 || _isWordSentenceEnd(_words[_index - 1].text);
     });
@@ -234,7 +230,6 @@ class _RsvpScreenState extends State<RsvpScreen> {
 
   Widget _buildWord() {
     if (_words.isEmpty) return const SizedBox.shrink();
-    if (_showBlank) return Container(color: widget.darkMode ? const Color(0xFF000000) : const Color(0xFFF5F5F0));
 
     final isFinished = _words.length > 1 && _index >= _words.length - 1;
     final isPaused = !_playing && !isFinished;
