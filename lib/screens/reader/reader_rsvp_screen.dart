@@ -308,25 +308,47 @@ class _RsvpScreenState extends State<RsvpScreen> {
     );
   }
 
+  int _orpIndex(int length) {
+    if (length <= 1) return 0;
+    return ((length - 1) ~/ 3).clamp(0, 4);
+  }
+
   Widget _buildWordWidget(int i, Color fg) {
     final word = _words[i].text;
+    final isFocal = i == _index;
     final distance = (i - _index).abs();
-    final opacity = i == _index ? 1.0 : (distance == 1 ? 0.7 : (distance == 2 ? 0.45 : 0.25));
+    final opacity = isFocal ? 1.0 : (distance == 1 ? 0.7 : (distance == 2 ? 0.45 : 0.25));
+
+    Widget wordWidget;
+    if (isFocal && word.length > 1) {
+      final accent = const Color(0xFFE05555);
+      final dim = fg.withValues(alpha: 0.7);
+      final orp = _orpIndex(word.length);
+      final left = word.substring(0, orp);
+      final focal = word[orp];
+      final right = word.substring(orp + 1);
+      final baseStyle = GoogleFonts.getFont(widget.fontFamily, fontSize: 32, fontWeight: FontWeight.w500);
+      wordWidget = RichText(
+        text: TextSpan(children: [
+          if (left.isNotEmpty) TextSpan(text: left, style: baseStyle.copyWith(color: fg)),
+          TextSpan(text: focal, style: baseStyle.copyWith(color: accent)),
+          if (right.isNotEmpty) TextSpan(text: right, style: baseStyle.copyWith(color: dim)),
+        ]),
+      );
+    } else {
+      wordWidget = Text(
+        word,
+        style: GoogleFonts.getFont(widget.fontFamily, fontSize: 32, fontWeight: FontWeight.w400, color: fg),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: _wordSpacing / 2),
       child: AnimatedOpacity(
         opacity: opacity,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
-        child: Text(
-          word,
-          style: GoogleFonts.getFont(
-            widget.fontFamily,
-            fontSize: 32,
-            fontWeight: i == _index ? FontWeight.w600 : FontWeight.w400,
-            color: fg,
-          ),
-        ),
+        child: wordWidget,
       ),
     );
   }
