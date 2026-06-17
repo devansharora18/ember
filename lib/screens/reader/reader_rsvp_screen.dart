@@ -35,6 +35,8 @@ class _RsvpScreenState extends State<RsvpScreen> {
   int _sentencesSincePause = 0;
   bool _isFirstWordOfSentence = true;
   bool _holding = false;
+  bool _dragging = false;
+  bool _wasPlayingBeforeDrag = false;
   late final List<_Word> _words;
   late final TextStyle _measuredStyle;
   final TextPainter _measurer = TextPainter(textDirection: TextDirection.ltr);
@@ -258,6 +260,26 @@ class _RsvpScreenState extends State<RsvpScreen> {
         _timer?.cancel();
         setState(() => _playing = false);
       },
+      onHorizontalDragStart: (_) {
+        _dragging = true;
+        _wasPlayingBeforeDrag = _playing;
+        _timer?.cancel();
+        setState(() => _playing = false);
+      },
+      onHorizontalDragUpdate: (d) {
+        final wordShift = (-d.primaryDelta! / 40).round();
+        if (wordShift != 0) {
+          _index = (_index + wordShift).clamp(0, _words.length - 1);
+          setState(() {});
+        }
+      },
+      onHorizontalDragEnd: (_) {
+        _dragging = false;
+        if (_wasPlayingBeforeDrag) {
+          setState(() => _playing = true);
+          _tick();
+        }
+      },
       child: Container(
         color: bg,
         child: Center(
@@ -267,8 +289,13 @@ class _RsvpScreenState extends State<RsvpScreen> {
                   const SizedBox(height: 16),
                   Text('Finished', style: GoogleFonts.getFont(widget.fontFamily, fontSize: 18, color: const Color(0xFF555555))),
                 ])
-              : Column(mainAxisSize: MainAxisSize.min, children: [
+                : Column(mainAxisSize: MainAxisSize.min, children: [
                   _buildWordStrip(fg),
+                  if (_dragging)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Container(width: 24, height: 2, color: const Color(0xFFE05555)),
+                    ),
                   if (isPaused) ...[
                     const SizedBox(height: 20),
                     Text('Paused — hold to read', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 13)),
