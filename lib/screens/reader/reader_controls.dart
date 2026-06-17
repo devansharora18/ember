@@ -91,6 +91,15 @@ class ReaderBottomBar extends StatelessWidget {
     final bg = darkMode ? const Color(0xDD000000) : const Color(0xDDF5F5F0);
     final fg = darkMode ? const Color(0xFF888888) : const Color(0xFF666666);
 
+    final remainingChars = (totalChars - position).clamp(0, totalChars);
+    final remainingWords = remainingChars / 6;
+    final remainingMin = remainingWords / 250;
+    final timeStr = remainingMin < 1
+        ? '<1 min'
+        : remainingMin < 60
+            ? '${remainingMin.round()} min'
+            : '${remainingMin ~/ 60}h ${(remainingMin.round() % 60)}m';
+
     return Container(
       padding: EdgeInsets.only(bottom: pad.bottom),
       color: bg,
@@ -118,7 +127,7 @@ class ReaderBottomBar extends StatelessWidget {
                 ),
               ],
               const SizedBox(width: 12),
-              Text('${totalChars > 0 ? (position * 100 ~/ totalChars) : 0}%', style: GoogleFonts.inter(color: fg, fontSize: 11)),
+              Text('${totalChars > 0 ? (position * 100 ~/ totalChars) : 0}% · $timeStr', style: GoogleFonts.inter(color: fg, fontSize: 11)),
             ],
           ),
         ),
