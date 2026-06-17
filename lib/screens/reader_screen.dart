@@ -48,6 +48,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   OverlayEntry? _rsvpOverlay;
   Offset? _tapPosition;
 
+  bool _searchMode = false;
+  String _searchQuery = '';
+  List<Map<String, int>> _searchResults = [];
+  final _searchController = TextEditingController();
+
   static const _minFontSize = 12.0;
   static const _maxFontSize = 24.0;
   static const _autoHideDelay = Duration(seconds: 3);
@@ -56,7 +61,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void initState() { super.initState(); _pageController.addListener(_onPageScrolling); _loadContent(); }
 
   @override
-  void dispose() { _saveProgress(); _pageController.dispose(); _hideTimer?.cancel(); super.dispose(); }
+  void dispose() { _saveProgress(); _pageController.dispose(); _hideTimer?.cancel(); _searchController.dispose(); super.dispose(); }
 
   void _onPageScrolling() {
     if (!_pageController.hasClients || !mounted) return;
@@ -68,8 +73,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     }
   }
 
-  void _scheduleHide() { if (_goToPageMode || _highlightMode) return; _hideTimer?.cancel(); _hideTimer = Timer(_autoHideDelay, () { if (mounted) setState(() => _controlsVisible = false); }); }
-  void _toggleControls() { if (_goToPageMode || _highlightMode) return; setState(() => _controlsVisible = !_controlsVisible); if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); } }
+  void _scheduleHide() { if (_goToPageMode || _highlightMode || _searchMode) return; _hideTimer?.cancel(); _hideTimer = Timer(_autoHideDelay, () { if (mounted) setState(() => _controlsVisible = false); }); }
+  void _toggleControls() { if (_goToPageMode || _highlightMode || _searchMode) return; setState(() => _controlsVisible = !_controlsVisible); if (_controlsVisible) { _scheduleHide(); } else { _hideTimer?.cancel(); } }
 
   Future<void> _loadContent() async {
     final chapters = await Future(() { if (widget.book.fileBytes != null) return EpubParser.extractChaptersFromBytes(widget.book.fileBytes!); return EpubParser.extractChapters(widget.book.filePath); });
@@ -179,6 +184,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       case 'highlights': _showHighlights(); return;
       case 'highlight': _enterHighlightMode(); return;
       case 'rsvp': _openRsvp(); return;
+      case 'search': _enterSearchMode(); return;
       case 'toggle_mode': setState(() => _darkMode = !_darkMode); BookStorage.saveDarkMode(widget.book.filePath, _darkMode); break;
     }
     _scheduleHide();
@@ -187,6 +193,44 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void _goToPageSliderChanged(double val) { final tp = val.round() - 1; var s = tp; for (final bm in _bookmarks) { if ((bm - tp).abs() <= 2) { s = bm; break; } } if (s >= 0 && s < _totalPages) { final co = widget.book.coverBytes != null ? 1 : 0; _pageController.jumpToPage(s + co); setState(() => _currentPage = s); } }
   void _exitGoToPageMode() { setState(() => _goToPageMode = false); _onPageChanged(_currentPage); _scheduleHide(); }
   void _returnToOriginalPage() { final co = widget.book.coverBytes != null ? 1 : 0; _pageController.jumpToPage(_goToOriginalPage + co); _onPageChanged(_goToOriginalPage); setState(() { _goToPageMode = false; _currentPage = _goToOriginalPage; }); _scheduleHide(); }
+
+  void _enterSearchMode() {
+    _hideTimer?.cancel();
+    _searchQuery = '';
+    _searchResults = [];
+    _searchController.clear();
+    setState(() { _searchMode = true; _controlsVisible = true; });
+  }
+
+  void _exitSearchMode() {
+    setState(() => _searchMode = false);
+    _searchController.clear();
+    _scheduleHide();
+  }
+
+  void _performSearch(String query) {
+    if (query.isEmpty) { setState(() => _searchResults = []); return; }
+    final results = <Map<String, int>>[];
+    final lower = _fullText.toLowerCase();
+    final q = query.toLowerCase();
+    var start = 0;
+    while (start < _fullText.length) {
+      final idx = lower.indexOf(q, start);
+      if (idx == -1) break;
+      results.add({'pos': idx, 'len': q.length});
+      start = idx + 1;
+    }
+    setState(() => _searchResults = results);
+  }
+
+  void _navigateToSearchResult(int pos) {
+    _exitSearchMode();
+    _position = pos.clamp(0, _totalChars);
+    _currentPage = _findPageForPosition(_position);
+    final co = widget.book.coverBytes != null ? 1 : 0;
+    _pageController.jumpToPage(_currentPage + co);
+    BookStorage.savePosition(widget.book.filePath, _position);
+  }
 
   void _openRsvp() async {
     _hideTimer?.cancel(); setState(() => _controlsVisible = true);
@@ -235,15 +279,16 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   Widget _buildReader(Book b, Color bg) {
     final cpp = _charsPerPage(context); _pageStarts = _computePageBreaks(cpp); _totalPages = _pageStarts.length - 1;
     final cc = b.coverBytes != null ? 1 : 0; final pad = MediaQuery.of(context).padding; final hc = b.coverBytes != null;
-    final sc = (_goToPageMode || _highlightMode) ? 0.85 : 1.0;
+    final sc = (_goToPageMode || _highlightMode || _searchMode) ? 0.85 : 1.0;
 
     return Focus(autofocus: true, onKeyEvent: (_, e) { if (e is KeyDownEvent) { if (e.logicalKey == LogicalKeyboardKey.arrowLeft) { _pageController.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut); return KeyEventResult.handled; } if (e.logicalKey == LogicalKeyboardKey.arrowRight) { _pageController.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeInOut); return KeyEventResult.handled; } } return KeyEventResult.ignored; }, child: Stack(children: [
       Transform.scale(scale: sc, child: PageView.builder(controller: _pageController, onPageChanged: (pg) { if (pg == 0 && cc > 0) { _currentPage = 0; return; } _onPageChanged(pg - cc); }, scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(), itemCount: _totalPages + cc, itemBuilder: (_, pi) { if (cc > 0 && pi == 0) return _buildCoverPage(b, bg); final tp = pi - cc; final st = _pageStarts[tp]; final en = tp + 1 < _pageStarts.length ? _pageStarts[tp + 1] : _fullText.length; return _buildTextPage(_fullText.substring(st, en), pad, st); })),
       if (_highlightMode) Positioned(top: MediaQuery.of(context).padding.top + 56, left: 20, right: 20, child: Material(color: Colors.transparent, child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), decoration: BoxDecoration(color: _darkMode ? const Color(0xEE000000) : const Color(0xEEF5F5F0), border: Border.all(color: const Color(0xFFE05555)), borderRadius: BorderRadius.zero), child: Row(children: [const Icon(Icons.highlight, size: 16, color: Color(0xFFE05555)), const SizedBox(width: 10), Expanded(child: Text(_highlightStartPos == null ? 'Tap start of text to highlight' : 'Tap end of text to highlight', style: GoogleFonts.inter(color: _darkMode ? Colors.white : Colors.black87, fontSize: 13))), GestureDetector(onTap: () { setState(() { _highlightMode = false; _highlightStartPos = null; }); _scheduleHide(); }, child: const Icon(Icons.close, size: 18, color: Color(0xFF888888)))])))),
-      if (!_goToPageMode && !_highlightMode) Positioned.fill(child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (e) => _tapPosition = e.localPosition, onPointerUp: (e) { if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10 && _rsvpPickCompleter == null) _toggleControls(); _tapPosition = null; })),
-      if (!_goToPageMode && !_highlightMode) AnimatedOpacity(opacity: _controlsVisible ? 1.0 : 0.0, duration: const Duration(milliseconds: 250), child: IgnorePointer(ignoring: !_controlsVisible, child: ReaderAppBar(title: b.title, darkMode: _darkMode, padding: pad, onBack: () { _saveProgress(); Navigator.pop(context); }, onDecreaseFont: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); }, onIncreaseFont: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); }, onShowToc: () { _hideTimer?.cancel(); showReaderToc(context, _chapters, _chapterStarts, _totalChars, _position, _darkMode, hc, _pageController, _pageStarts, _scheduleHide); }, onBookmarkToggle: _toggleBookmark, isBookmarked: _isBookmarked, onMenuAction: _handleMenuAction, menuItems: [readerMenuPopItem('RSVP speed read', 'rsvp', _darkMode), readerMenuPopItem('Highlight', 'highlight', _darkMode), readerMenuPopItem('Highlights', 'highlights', _darkMode), readerMenuPopItem('Bookmarks', 'bookmarks', _darkMode), readerMenuPopItem('Select font…', 'select_font', _darkMode), readerMenuPopItem('Go to page…', 'go_to_page', _darkMode), readerMenuPopItem(_darkMode ? 'Light mode' : 'Dark mode', 'toggle_mode', _darkMode)]))),
-      if (!_goToPageMode && !_highlightMode) Positioned(bottom: 0, left: 0, right: 0, child: ReaderBottomBar(currentPage: _currentPage + 1, totalPages: _totalPages, totalChars: _totalChars, position: _position, darkMode: _darkMode, coverCount: cc, pageController: _pageController)),
+      if (!_goToPageMode && !_highlightMode && !_searchMode) Positioned.fill(child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (e) => _tapPosition = e.localPosition, onPointerUp: (e) { if (_tapPosition != null && (e.localPosition - _tapPosition!).distance < 10 && _rsvpPickCompleter == null) _toggleControls(); _tapPosition = null; })),
+      if (!_goToPageMode && !_highlightMode && !_searchMode) AnimatedOpacity(opacity: _controlsVisible ? 1.0 : 0.0, duration: const Duration(milliseconds: 250), child: IgnorePointer(ignoring: !_controlsVisible, child: ReaderAppBar(title: b.title, darkMode: _darkMode, padding: pad, onBack: () { _saveProgress(); Navigator.pop(context); }, onDecreaseFont: () { _hideTimer?.cancel(); _setFontSize(-1); _scheduleHide(); }, onIncreaseFont: () { _hideTimer?.cancel(); _setFontSize(1); _scheduleHide(); }, onShowToc: () { _hideTimer?.cancel(); showReaderToc(context, _chapters, _chapterStarts, _totalChars, _position, _darkMode, hc, _pageController, _pageStarts, _scheduleHide); }, onBookmarkToggle: _toggleBookmark, isBookmarked: _isBookmarked,                     onMenuAction: _handleMenuAction, menuItems: [readerMenuPopItem('Search…', 'search', _darkMode), readerMenuPopItem('RSVP speed read', 'rsvp', _darkMode), readerMenuPopItem('Highlight', 'highlight', _darkMode), readerMenuPopItem('Highlights', 'highlights', _darkMode), readerMenuPopItem('Bookmarks', 'bookmarks', _darkMode), readerMenuPopItem('Select font…', 'select_font', _darkMode), readerMenuPopItem('Go to page…', 'go_to_page', _darkMode), readerMenuPopItem(_darkMode ? 'Light mode' : 'Dark mode', 'toggle_mode', _darkMode)]))),
+      if (!_goToPageMode && !_highlightMode && !_searchMode) Positioned(bottom: 0, left: 0, right: 0, child: ReaderBottomBar(currentPage: _currentPage + 1, totalPages: _totalPages, totalChars: _totalChars, position: _position, darkMode: _darkMode, coverCount: cc, pageController: _pageController)),
       if (_goToPageMode) _buildGoToPageOverlay(pad),
+      if (_searchMode) _buildSearchOverlay(pad),
     ]));
   }
 
@@ -267,6 +312,69 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         ])),
         const SizedBox(height: 8),
       ])),
+    ]);
+  }
+
+  Widget _buildSearchOverlay(EdgeInsets pad) {
+    final bgColor = _darkMode ? const Color(0xEE000000) : const Color(0xEEF5F5F0);
+    final fg = _darkMode ? Colors.white : Colors.black87;
+    final dim = _darkMode ? const Color(0xFF888888) : const Color(0xFF666666);
+    final accent = const Color(0xFFE05555);
+
+    return Column(children: [
+      Container(padding: EdgeInsets.only(top: pad.top), color: bgColor, child: SizedBox(height: 56, child: Row(children: [
+        IconButton(icon: Icon(Icons.arrow_back, color: fg, size: 22), onPressed: _exitSearchMode),
+        Expanded(child: TextField(
+          controller: _searchController,
+          autofocus: true,
+          onChanged: (v) { _searchQuery = v; _performSearch(v); },
+          style: GoogleFonts.inter(color: fg, fontSize: 14),
+          cursorColor: accent,
+          decoration: InputDecoration(
+            hintText: 'Search…',
+            hintStyle: GoogleFonts.inter(color: dim, fontSize: 14),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.zero,
+          ),
+        )),
+        if (_searchQuery.isNotEmpty)
+          Text('${_searchResults.length}', style: GoogleFonts.inter(color: dim, fontSize: 12)),
+        const SizedBox(width: 8),
+      ]))),
+      if (_searchQuery.isNotEmpty)
+        Expanded(child: Container(color: bgColor, child: _searchResults.isEmpty
+            ? Center(child: Text('No results', style: GoogleFonts.inter(color: dim, fontSize: 13)))
+            : ListView.builder(
+                padding: EdgeInsets.only(bottom: pad.bottom),
+                itemCount: _searchResults.length.clamp(0, 100),
+                itemBuilder: (_, i) {
+                  final m = _searchResults[i];
+                  final pos = m['pos']!;
+                  final len = m['len']!;
+                  final start = (pos - 40).clamp(0, _fullText.length);
+                  final end = (pos + len + 40).clamp(0, _fullText.length);
+                  final before = _fullText.substring(start, pos);
+                  final match = _fullText.substring(pos, pos + len);
+                  final after = _fullText.substring(pos + len, end);
+                  final pg = _findPageForPosition(pos);
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(Icons.search, size: 14, color: dim),
+                    title: RichText(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      text: TextSpan(children: [
+                        if (start < pos) TextSpan(text: '…${before.trimLeft()}', style: GoogleFonts.inter(color: dim, fontSize: 13)),
+                        TextSpan(text: match, style: GoogleFonts.inter(color: accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                        if (pos + len < end) TextSpan(text: '${after.trimRight()}…', style: GoogleFonts.inter(color: dim, fontSize: 13)),
+                      ]),
+                    ),
+                    subtitle: Text('Page ${pg + 1}', style: GoogleFonts.inter(color: _darkMode ? const Color(0xFF555555) : const Color(0xFF999999), fontSize: 11)),
+                    onTap: () => _navigateToSearchResult(pos),
+                  );
+                },
+              ),
+        )),
     ]);
   }
 
