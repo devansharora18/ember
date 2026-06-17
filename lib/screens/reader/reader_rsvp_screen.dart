@@ -304,9 +304,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 100),
-                curve: Curves.easeOut,
+              Positioned(
                 left: stripOffset,
                 top: 0,
                 bottom: 0,
