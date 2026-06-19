@@ -127,15 +127,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       _fullText = text;
       _totalChars = tc;
       _position = savedPos.clamp(0, tc);
+      if (savedFontSize != null) _fontSize = savedFontSize.clamp(_minFontSize, _maxFontSize);
+      if (savedFontFamily != null) _fontFamily = savedFontFamily;
+      if (savedDarkMode != null) _darkMode = savedDarkMode;
       _layout = ReaderPageLayout(
         fullText: text,
         chapterStarts: chapterStarts,
         fontSize: _fontSize,
         fontFamily: _fontFamily,
       );
-      if (savedFontSize != null) _fontSize = savedFontSize.clamp(_minFontSize, _maxFontSize);
-      if (savedFontFamily != null) _fontFamily = savedFontFamily;
-      if (savedDarkMode != null) _darkMode = savedDarkMode;
       _bookmarks = bms;
       _isBookmarked = bms.contains(_currentPage);
       _highlights = hls;
@@ -172,7 +172,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   void _updatePagination() {
     final cpp = _layout.charsPerPage(context, (fs) => _textStyle(fontSize: fs));
-    _pageStarts = _layout.computePageBreaks(cpp);
+    final cols = _layout.colsPerLine(context, (fs) => _textStyle(fontSize: fs));
+    _pageStarts = _layout.computePageBreaks(cpp, cols);
     _totalPages = _pageStarts.length - 1;
   }
 
@@ -736,7 +737,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     fontSize: _fontSize,
                     fontFamily: _fontFamily,
                     darkMode: _darkMode,
-                    chapters: _chapters,
                     highlights: _highlights,
                     highlightModeActive: _highlightMode,
                     rsvpPickActive: _rsvpPickCompleter != null,

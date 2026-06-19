@@ -16,7 +16,7 @@ class ReaderPageLayout {
   int charsPerPage(BuildContext context, TextStyle Function(double?) styleBuilder) {
     final s = MediaQuery.of(context).size;
     final p = MediaQuery.of(context).padding;
-    const tp = EdgeInsets.fromLTRB(24, 48, 24, 16);
+    const tp = EdgeInsets.fromLTRB(24, 48, 24, 0);
     final w = s.width - tp.left - tp.right;
     final h = s.height - p.top - p.bottom - tp.top - tp.bottom;
     if (w <= 0 || h <= 0) return 1000;
@@ -24,12 +24,25 @@ class ReaderPageLayout {
       text: TextSpan(text: 'X', style: styleBuilder(fontSize).copyWith(height: 1.7)),
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: w);
-    final cols = (w / painter.width).floor().clamp(1, 999);
-    final rows = (h / painter.height).floor().clamp(1, 999);
+    final cols = (w / painter.width).ceil().clamp(1, 999);
+    final rows = (h / painter.height).ceil().clamp(1, 999);
     return cols * rows;
   }
 
-  List<int> computePageBreaks(int cpp) {
+  int colsPerLine(BuildContext context, TextStyle Function(double?) styleBuilder) {
+    final s = MediaQuery.of(context).size;
+    final p = MediaQuery.of(context).padding;
+    const tp = EdgeInsets.fromLTRB(24, 48, 24, 0);
+    final w = s.width - tp.left - tp.right;
+    if (w <= 0) return 80;
+    final painter = TextPainter(
+      text: TextSpan(text: 'X', style: styleBuilder(fontSize).copyWith(height: 1.7)),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: w);
+    return (w / painter.width).ceil().clamp(1, 999);
+  }
+
+  List<int> computePageBreaks(int cpp, int cols) {
     if (cpp <= 0) return [0];
     final breaks = <int>[0];
     while (breaks.last < fullText.length) {
@@ -42,6 +55,12 @@ class ReaderPageLayout {
       if (nextChapter != null && nextChapter < end) {
         end = nextChapter;
       }
+
+      final segment = fullText.substring(breaks.last, end);
+      final newlineCount = '\n'.allMatches(segment).length;
+      final penalty = newlineCount * (cols ~/ 2);
+      final minEnd = (breaks.last + 1).clamp(0, end);
+      end = (end - penalty).clamp(minEnd, end);
 
       if (end < fullText.length) {
         var back = end;
