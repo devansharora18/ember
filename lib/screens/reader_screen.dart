@@ -116,7 +116,19 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   List<int> _computePageBreaks(int cpp) {
     if (cpp <= 0) return [0];
     final b = <int>[0];
-    while (b.last < _fullText.length) { var e = (b.last + cpp).clamp(0, _fullText.length); if (e < _fullText.length) { var a = e; while (a > b.last && a > e - 80 && _fullText[a] != ' ' && _fullText[a] != '\n') { a--; } if (a > b.last && (_fullText[a] == ' ' || _fullText[a] == '\n')) e = a + 1; } b.add(e); }
+    while (b.last < _fullText.length) {
+      var e = (b.last + cpp).clamp(0, _fullText.length);
+      final nextChapterStart = _chapterStarts.cast<int?>().firstWhere((cs) => cs! > b.last, orElse: () => null);
+      if (nextChapterStart != null && nextChapterStart < e) {
+        e = nextChapterStart;
+      }
+      if (e < _fullText.length) {
+        var a = e;
+        while (a > b.last && a > e - 80 && _fullText[a] != ' ' && _fullText[a] != '\n') { a--; }
+        if (a > b.last && (_fullText[a] == ' ' || _fullText[a] == '\n')) e = a + 1;
+      }
+      b.add(e);
+    }
     return b;
   }
 
