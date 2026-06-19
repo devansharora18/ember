@@ -104,7 +104,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   int _charsPerPage(BuildContext context) {
     final s = MediaQuery.of(context).size; final p = MediaQuery.of(context).padding;
-    final tp = const EdgeInsets.fromLTRB(24, 48, 24, 4);
+    final tp = const EdgeInsets.fromLTRB(24, 0, 24, 0);
     final w = s.width - tp.left - tp.right; final h = s.height - p.top - p.bottom - tp.top - tp.bottom;
     if (w <= 0 || h <= 0) return 1000;
     final painter = TextPainter(text: TextSpan(text: 'X', style: _textStyle(height: 1.7)), textDirection: TextDirection.ltr)..layout(maxWidth: w);
