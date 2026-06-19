@@ -1,4 +1,4 @@
-package com.example.ember
+package `in`.devansharora.ember
 
 import io.flutter.embedding.android.FlutterActivity
 
