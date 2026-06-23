@@ -90,6 +90,29 @@ class BookStorage {
     }));
   }
 
+  static Future<String> storeBookFile(String sourcePath) async {
+    final dir = await _dir();
+    final booksDir = Directory('${dir.path}/books');
+    if (!await booksDir.exists()) await booksDir.create(recursive: true);
+
+    final fileName = sourcePath.split('/').last.split('\\').last;
+    String destPath = '${booksDir.path}/$fileName';
+    final destFile = File(destPath);
+    if (await destFile.exists()) {
+      final dotIndex = fileName.lastIndexOf('.');
+      final baseName = dotIndex > 0 ? fileName.substring(0, dotIndex) : fileName;
+      final ext = dotIndex > 0 ? fileName.substring(dotIndex) : '';
+      var counter = 1;
+      do {
+        destPath = '${booksDir.path}/${baseName}_$counter$ext';
+        counter++;
+      } while (await File(destPath).exists());
+    }
+
+    await File(sourcePath).copy(destPath);
+    return destPath;
+  }
+
   static Future<void> savePosition(String filePath, int position) async {
     try {
       final dir = await _dir();

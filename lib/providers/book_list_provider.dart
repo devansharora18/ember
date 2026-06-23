@@ -23,10 +23,11 @@ class BookListNotifier extends Notifier<List<Book>> {
     final newBooks = <Book>[];
     for (final path in paths) {
       final meta = EpubParser.parse(path);
+      final storedPath = await BookStorage.storeBookFile(path);
       newBooks.add(Book(
         title: meta.title,
         author: meta.author,
-        filePath: path,
+        filePath: storedPath,
         coverBytes: meta.coverBytes,
       ));
     }
