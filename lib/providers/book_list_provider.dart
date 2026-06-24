@@ -83,6 +83,12 @@ class BookListNotifier extends Notifier<List<Book>> {
     BookStorage.saveAll(state, ref.read(columnsProvider));
   }
 
+  void replaceAll(List<Book> books, int columns) {
+    ref.read(columnsProvider.notifier).set(columns);
+    state = books;
+    _save();
+  }
+
   void saveLayout() {
     BookStorage.saveAll(state, ref.read(columnsProvider));
   }

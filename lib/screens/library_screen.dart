@@ -8,6 +8,7 @@ import '../providers/book_list_provider.dart';
 import '../widgets/book_card.dart';
 import 'reader_screen.dart';
 import 'library/library_dialogs.dart';
+import 'settings_screen.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -143,6 +144,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ref.read(bookListProvider.notifier).saveLayout();
             },
             icon: Icon(icon, color: Colors.white.withAlpha(128), size: 20 * s), splashRadius: 22 * s, visualDensity: VisualDensity.compact, tooltip: '$columns columns',
+          ),
+          IconButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            icon: Icon(Icons.settings, color: Colors.white.withAlpha(128), size: 20 * s), splashRadius: 22 * s, visualDensity: VisualDensity.compact, tooltip: 'Settings',
           ),
           IconButton(
             onPressed: () => ref.read(searchingProvider.notifier).set(true),
