@@ -46,6 +46,7 @@ class ReaderPageLayout {
     final breaks = <int>[0];
     while (breaks.last < fullText.length) {
       var end = (breaks.last + cpp).clamp(0, fullText.length);
+      var chapterTruncated = false;
 
       final nextChapter = chapterStarts.cast<int?>().firstWhere(
         (cs) => cs! > breaks.last,
@@ -53,13 +54,16 @@ class ReaderPageLayout {
       );
       if (nextChapter != null && nextChapter < end) {
         end = nextChapter;
+        chapterTruncated = true;
       }
 
-      final segment = fullText.substring(breaks.last, end);
-      final newlineCount = '\n'.allMatches(segment).length;
-      final penalty = newlineCount * (cols ~/ 2);
-      final minEnd = (breaks.last + 1).clamp(0, end);
-      end = (end - penalty).clamp(minEnd, end);
+      if (!chapterTruncated) {
+        final segment = fullText.substring(breaks.last, end);
+        final newlineCount = '\n'.allMatches(segment).length;
+        final penalty = newlineCount * (cols ~/ 2);
+        final minEnd = (breaks.last + 1).clamp(0, end);
+        end = (end - penalty).clamp(minEnd, end);
+      }
 
       if (end < fullText.length) {
         var back = end;

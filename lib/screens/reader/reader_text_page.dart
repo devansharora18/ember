@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../models/format_range.dart';
 
 class ReaderTextPage extends StatelessWidget {
   final String text;
@@ -9,6 +10,7 @@ class ReaderTextPage extends StatelessWidget {
   final String fontFamily;
   final bool darkMode;
   final List<Map<String, int>> highlights;
+  final List<FormatRange> formatRanges;
   final bool highlightModeActive;
   final bool rsvpPickActive;
   final void Function(TapDownDetails, String, GlobalKey) onTapWord;
@@ -22,6 +24,7 @@ class ReaderTextPage extends StatelessWidget {
     required this.fontFamily,
     required this.darkMode,
     required this.highlights,
+    this.formatRanges = const [],
     this.highlightModeActive = false,
     this.rsvpPickActive = false,
     required this.onTapWord,
@@ -31,6 +34,7 @@ class ReaderTextPage extends StatelessWidget {
     double? fontSize,
     Color? color,
     FontWeight? fontWeight,
+    FontStyle? fontStyle,
     double? height,
     double? letterSpacing,
   }) {
@@ -38,6 +42,7 @@ class ReaderTextPage extends StatelessWidget {
       fontFamily,
       fontSize: fontSize ?? this.fontSize,
       fontWeight: fontWeight ?? FontWeight.w400,
+      fontStyle: fontStyle ?? FontStyle.normal,
       color:
           color ??
           (darkMode ? const Color(0xFFCCCCCC) : const Color(0xFF1A1A1A)),
@@ -49,16 +54,19 @@ class ReaderTextPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final key = GlobalKey();
-    final normStyle = _style(height: 1.7);
     final pageEnd = pageStart + text.length;
 
     final pageHighlights = highlights
         .where((h) => h['s']! < pageEnd && h['e']! > pageStart)
         .toList();
 
-    final content = pageHighlights.isEmpty
-        ? Text(text, key: key, style: normStyle)
-        : _buildHighlightedText(key, normStyle, pageHighlights);
+    final pageFormats = formatRanges
+        .where((r) => r.start < pageEnd && r.end > pageStart)
+        .toList();
+
+    final content = (pageFormats.isEmpty && pageHighlights.isEmpty)
+        ? Text(text, key: key, style: _style(height: 1.7))
+        : _buildRichText(key, pageHighlights, pageFormats);
 
     final gestureDetector = GestureDetector(
       onDoubleTapDown: highlightModeActive
@@ -80,43 +88,67 @@ class ReaderTextPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHighlightedText(
+  Widget _buildRichText(
     GlobalKey key,
-    TextStyle normStyle,
     List<Map<String, int>> pageHighlights,
+    List<FormatRange> pageFormats,
   ) {
     final hlStyle = _style(
       height: 1.7,
       color: darkMode ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
     );
     final hlBg = darkMode ? const Color(0xAAFFFFFF) : const Color(0xAA000000);
-    final spans = <TextSpan>[];
-    var pos = 0;
 
-    for (final hl in pageHighlights) {
-      final localStart = (hl['s']! - pageStart).clamp(0, text.length);
-      final localEnd = (hl['e']! - pageStart).clamp(0, text.length);
-      if (localStart > pos) {
-        spans.add(
-          TextSpan(text: text.substring(pos, localStart), style: normStyle),
+    final breakPoints = <int>{0, text.length};
+    for (final h in pageHighlights) {
+      breakPoints.add((h['s']! - pageStart).clamp(0, text.length));
+      breakPoints.add((h['e']! - pageStart).clamp(0, text.length));
+    }
+    for (final r in pageFormats) {
+      breakPoints.add((r.start - pageStart).clamp(0, text.length));
+      breakPoints.add((r.end - pageStart).clamp(0, text.length));
+    }
+    final sorted = breakPoints.toList()..sort();
+
+    final spans = <TextSpan>[];
+    for (var i = 0; i < sorted.length - 1; i++) {
+      final s = sorted[i];
+      final e = sorted[i + 1];
+      if (s >= e) continue;
+      final mid = (s + e) ~/ 2;
+      final globalMid = pageStart + mid;
+
+      final isHighlighted = pageHighlights.any(
+        (h) => h['s']! <= globalMid && h['e']! > globalMid,
+      );
+
+      var isBold = false;
+      var isItalic = false;
+      for (final r in pageFormats) {
+        if (r.start <= globalMid && r.end > globalMid) {
+          if (r.bold) isBold = true;
+          if (r.italic) isItalic = true;
+        }
+      }
+
+      TextStyle spanStyle;
+      if (isHighlighted) {
+        spanStyle = hlStyle.copyWith(
+          backgroundColor: hlBg,
+          fontWeight: isBold ? FontWeight.w700 : FontWeight.w400,
+          fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+        );
+      } else {
+        spanStyle = _style(
+          height: 1.7,
+          fontWeight: isBold ? FontWeight.w700 : FontWeight.w400,
+          fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
         );
       }
-      if (localEnd > localStart) {
-        spans.add(
-          TextSpan(
-            text: text.substring(localStart, localEnd),
-            style: hlStyle.copyWith(backgroundColor: hlBg),
-          ),
-        );
-      }
-      pos = localEnd;
+
+      spans.add(TextSpan(text: text.substring(s, e), style: spanStyle));
     }
-    if (pos < text.length) {
-      spans.add(TextSpan(text: text.substring(pos), style: normStyle));
-    }
-    return RichText(
-      key: key,
-      text: TextSpan(children: spans),
-    );
+
+    return RichText(key: key, text: TextSpan(children: spans));
   }
 }

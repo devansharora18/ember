@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
+import '../models/format_range.dart';
 
 class EpubMetadata {
   final String title;
@@ -15,8 +16,9 @@ class EpubChapter {
   final String title;
   final String content;
   final String? spineHref;
+  final List<FormatRange> formatRanges;
 
-  const EpubChapter({required this.title, required this.content, this.spineHref});
+  const EpubChapter({required this.title, required this.content, this.spineHref, this.formatRanges = const []});
 }
 
 class EpubPageMap {
@@ -109,7 +111,8 @@ class EpubParser {
           var title = i < ncxTitles.length ? ncxTitles[i] : '';
           if (title.isEmpty) title = _extractTitleFromHtml(html);
           if (title.isEmpty) title = 'Chapter ${i + 1}';
-          chapters.add(EpubChapter(title: title, content: _stripHtml(html), spineHref: href));
+          final parsed = _parseFormattedText(html);
+          chapters.add(EpubChapter(title: title, content: parsed.text, spineHref: href, formatRanges: parsed.ranges));
         }
       }
       return chapters;
@@ -362,6 +365,120 @@ class EpubParser {
         .replaceAll(RegExp(r'&[a-z]+;'), '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+  }
+
+  static ({String text, List<FormatRange> ranges}) _parseFormattedText(String html) {
+    var cleaned = html
+        .replaceAll(RegExp(r'<style[^>]*>.*?</style>', dotAll: true), '')
+        .replaceAll(RegExp(r'<script[^>]*>.*?</script>', dotAll: true), '');
+
+    final buffer = StringBuffer();
+    var ranges = <FormatRange>[];
+
+    var bold = false;
+    var italic = false;
+    int? headingLevel;
+    var rangeStart = 0;
+
+    var prevBold = false;
+    var prevItalic = false;
+    int? prevHeading;
+
+    bool stylingChanged() {
+      return bold != prevBold || italic != prevItalic || headingLevel != prevHeading;
+    }
+
+    final tagRe = RegExp(r'(<[^>]+>)|([^<]+)');
+
+    for (final match in tagRe.allMatches(cleaned)) {
+      final tag = match.group(1);
+      final rawText = match.group(2);
+
+      if (tag != null) {
+        final lower = tag.toLowerCase();
+        if (lower.startsWith('</')) {
+          final name = lower.substring(2, lower.length - (lower.endsWith('>') ? 1 : 0)).trim();
+          if (name == 'b' || name == 'strong') bold = false;
+          if (name == 'i' || name == 'em') italic = false;
+          if (name == 'h1' || name == 'h2' || name == 'h3' || name == 'h4' || name == 'h5' || name == 'h6') headingLevel = null;
+        } else if (lower.endsWith('/>')) {
+          continue;
+        } else {
+          final spaceIdx = lower.indexOf(RegExp(r'[\s/>]'));
+          String name;
+          if (spaceIdx > 0) {
+            name = lower.substring(1, spaceIdx);
+          } else {
+            final closeIdx = lower.endsWith('>') ? lower.length - 1 : lower.length;
+            name = lower.substring(1, closeIdx);
+          }
+          if (name == 'b' || name == 'strong') bold = true;
+          if (name == 'i' || name == 'em') italic = true;
+          if (name == 'h1') headingLevel = 1;
+          if (name == 'h2') headingLevel = 2;
+          if (name == 'h3') headingLevel = 3;
+          if (name == 'h4') headingLevel = 4;
+          if (name == 'h5') headingLevel = 5;
+          if (name == 'h6') headingLevel = 6;
+        }
+      } else if (rawText != null) {
+        var text = rawText
+            .replaceAll('&nbsp;', ' ')
+            .replaceAll('&amp;', '&')
+            .replaceAll('&lt;', '<')
+            .replaceAll('&gt;', '>')
+            .replaceAll('&quot;', '"')
+            .replaceAll(RegExp(r'&#\d+;'), '')
+            .replaceAll(RegExp(r'&[a-z]+;'), '');
+        text = text.replaceAll(RegExp(r'\s+'), ' ');
+
+        if (text.trim().isEmpty && buffer.isEmpty) continue;
+
+        if (stylingChanged() && rangeStart < buffer.length) {
+          ranges.add(FormatRange(
+            start: rangeStart,
+            end: buffer.length,
+            bold: prevBold,
+            italic: prevItalic,
+            headingLevel: prevHeading,
+          ));
+          rangeStart = buffer.length;
+        }
+
+        prevBold = bold;
+        prevItalic = italic;
+        prevHeading = headingLevel;
+
+        buffer.write(text);
+      }
+    }
+
+    if (rangeStart < buffer.length && (bold || italic || headingLevel != null)) {
+      ranges.add(FormatRange(
+        start: rangeStart,
+        end: buffer.length,
+        bold: bold,
+        italic: italic,
+        headingLevel: headingLevel,
+      ));
+    }
+
+    var plain = buffer.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    if (plain.isNotEmpty && ranges.isNotEmpty) {
+      final lengthDiff = buffer.length - plain.length;
+      if (lengthDiff > 0) {
+        ranges = ranges.map((r) => FormatRange(
+          start: (r.start - lengthDiff).clamp(0, plain.length),
+          end: (r.end - lengthDiff).clamp(0, plain.length),
+          bold: r.bold,
+          italic: r.italic,
+          headingLevel: r.headingLevel,
+        )).where((r) => r.start < r.end).toList();
+      }
+    }
+
+    return (text: plain, ranges: ranges);
   }
 
   static List<Map<String, String>> _extractNavPages(String html) {

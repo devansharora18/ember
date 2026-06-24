@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/book.dart';
+import '../../models/format_range.dart';
 import '../../providers/book_list_provider.dart';
 import '../../services/book_storage.dart';
 import '../../services/epub_parser.dart';
@@ -61,6 +62,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   // ── highlights ──
   List<Map<String, int>> _highlights = [];
+  List<FormatRange> _formatRanges = [];
   bool _highlightMode = false;
   int? _highlightStartPos;
 
@@ -112,12 +114,23 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
     final buf = StringBuffer();
     final chapterStarts = <int>[];
+    final formatRanges = <FormatRange>[];
     for (final ch in chapters) {
       chapterStarts.add(buf.length);
       buf.writeln(ch.title);
       buf.writeln();
+      final contentStart = buf.length;
       buf.writeln(ch.content);
       buf.writeln();
+      for (final r in ch.formatRanges) {
+        formatRanges.add(FormatRange(
+          start: contentStart + r.start,
+          end: contentStart + r.end,
+          bold: r.bold,
+          italic: r.italic,
+          headingLevel: r.headingLevel,
+        ));
+      }
     }
     final text = buf.toString();
     final tc = text.length;
@@ -137,6 +150,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         fontFamily: _fontFamily,
       );
       _bookmarks = bms;
+      _formatRanges = formatRanges;
       _isBookmarked = bms.contains(_currentPage);
       _highlights = hls;
       _loading = false;
@@ -738,6 +752,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     fontFamily: _fontFamily,
                     darkMode: _darkMode,
                     highlights: _highlights,
+                    formatRanges: _formatRanges,
                     highlightModeActive: _highlightMode,
                     rsvpPickActive: _rsvpPickCompleter != null,
                     onTapWord: _handleDoubleTap,
