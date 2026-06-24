@@ -47,7 +47,7 @@ class EditBookDialog extends StatelessWidget {
               const SizedBox(height: 16),
               GestureDetector(
                 onTap: () async {
-                  final picked = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['png', 'jpg', 'jpeg'], withData: true);
+                  final picked = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['png', 'jpg', 'jpeg'], withData: true);
                   if (picked != null && picked.files.isNotEmpty && picked.files.first.bytes != null) {
                     setDialogState(() => newCover = picked.files.first.bytes);
                   }

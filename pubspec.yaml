@@ -32,18 +32,18 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  file_picker: ^8.0.0
-  google_fonts: ^6.2.1
+  file_picker: ^11.0.2
+  google_fonts: ^8.1.0
   archive: ^4.0.0
   path_provider: ^2.1.0
-  flutter_riverpod: ^2.5.0
+  flutter_riverpod: ^3.3.2
   http: ^1.2.0
   universal_html: ^2.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.13.0
+  flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

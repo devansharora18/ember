@@ -15,7 +15,7 @@ class BookListNotifier extends Notifier<List<Book>> {
     try {
       final data = await BookStorage.loadAll();
       state = data.books;
-      ref.read(columnsProvider.notifier).state = data.columns;
+      ref.read(columnsProvider.notifier).set(data.columns);
     } catch (_) {}
   }
 
@@ -90,9 +90,27 @@ class BookListNotifier extends Notifier<List<Book>> {
 
 final bookListProvider = NotifierProvider<BookListNotifier, List<Book>>(BookListNotifier.new);
 
-final columnsProvider = StateProvider<int>((ref) => 3);
-final searchQueryProvider = StateProvider<String>((ref) => '');
-final searchingProvider = StateProvider<bool>((ref) => false);
+class ColumnsNotifier extends Notifier<int> {
+  @override
+  int build() => 3;
+  void set(int value) => state = value;
+}
+
+class SearchQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+  void set(String value) => state = value;
+}
+
+class SearchingNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void set(bool value) => state = value;
+}
+
+final columnsProvider = NotifierProvider<ColumnsNotifier, int>(ColumnsNotifier.new);
+final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(SearchQueryNotifier.new);
+final searchingProvider = NotifierProvider<SearchingNotifier, bool>(SearchingNotifier.new);
 
 final filteredBooksProvider = Provider<List<Book>>((ref) {
   final books = ref.watch(bookListProvider);

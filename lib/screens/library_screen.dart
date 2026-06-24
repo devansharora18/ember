@@ -44,18 +44,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     if (_pinchAccum > 0.5) {
       _pinchAccum = 0.0; final cols = ref.read(columnsProvider);
       final idx = _columnOptions.indexOf(cols);
-      if (cols > 2) { ref.read(columnsProvider.notifier).state = _columnOptions[(idx - 1).clamp(0, _columnOptions.length - 1)]; ref.read(bookListProvider.notifier).saveLayout(); }
+      if (cols > 2) { ref.read(columnsProvider.notifier).set(_columnOptions[(idx - 1).clamp(0, _columnOptions.length - 1)]); ref.read(bookListProvider.notifier).saveLayout(); }
     } else if (_pinchAccum < -0.5) {
       _pinchAccum = 0.0; final cols = ref.read(columnsProvider);
       final idx = _columnOptions.indexOf(cols);
-      if (cols < 4) { ref.read(columnsProvider.notifier).state = _columnOptions[(idx + 1).clamp(0, _columnOptions.length - 1)]; ref.read(bookListProvider.notifier).saveLayout(); }
+      if (cols < 4) { ref.read(columnsProvider.notifier).set(_columnOptions[(idx + 1).clamp(0, _columnOptions.length - 1)]); ref.read(bookListProvider.notifier).saveLayout(); }
     }
   }
 
   // --------------- Book actions ---------------
 
   Future<void> _addBooks() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: true, type: FileType.custom, allowedExtensions: ['epub']);
+    final result = await FilePicker.pickFiles(allowMultiple: true, type: FileType.custom, allowedExtensions: ['epub']);
     if (result == null || result.files.isEmpty) return;
     final paths = <String>[];
     for (final f in result.files) {
@@ -139,13 +139,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           IconButton(
             onPressed: () {
               final newIdx = (idx + 1) % _columnOptions.length;
-              ref.read(columnsProvider.notifier).state = _columnOptions[newIdx];
+              ref.read(columnsProvider.notifier).set(_columnOptions[newIdx]);
               ref.read(bookListProvider.notifier).saveLayout();
             },
             icon: Icon(icon, color: Colors.white.withAlpha(128), size: 20 * s), splashRadius: 22 * s, visualDensity: VisualDensity.compact, tooltip: '$columns columns',
           ),
           IconButton(
-            onPressed: () => ref.read(searchingProvider.notifier).state = true,
+            onPressed: () => ref.read(searchingProvider.notifier).set(true),
             icon: Icon(Icons.search, color: Colors.white.withAlpha(128), size: 22 * s), splashRadius: 22 * s, visualDensity: VisualDensity.compact,
           ),
         ]),
@@ -159,10 +159,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         controller: _searchController, autofocus: true,
         style: GoogleFonts.inter(color: Colors.white, fontSize: 16 * s), cursorColor: Colors.white,
         decoration: InputDecoration(hintText: 'Search by title or author', hintStyle: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 14 * s), border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8 * s)),
-        onChanged: (v) => ref.read(searchQueryProvider.notifier).state = v,
+        onChanged: (v) => ref.read(searchQueryProvider.notifier).set(v),
       )),
       IconButton(
-        onPressed: () { _searchController.clear(); ref.read(searchQueryProvider.notifier).state = ''; ref.read(searchingProvider.notifier).state = false; },
+        onPressed: () { _searchController.clear(); ref.read(searchQueryProvider.notifier).set(''); ref.read(searchingProvider.notifier).set(false); },
         icon: const Icon(Icons.close, color: Colors.white, size: 20), splashRadius: 20, visualDensity: VisualDensity.compact,
       ),
     ]);

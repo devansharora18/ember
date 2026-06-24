@@ -604,12 +604,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void _lookupWord(String text, int idx) {
     var s = idx, e = idx;
     final wc = RegExp(r'[\w]');
-    while (s > 0 && wc.hasMatch(text[s - 1])) s--;
-    while (e < text.length && wc.hasMatch(text[e])) e++;
+    while (s > 0 && wc.hasMatch(text[s - 1])) { s--; }
+    while (e < text.length && wc.hasMatch(text[e])) { e++; }
 
     if (_highlightMode) {
-      while (s > 0 && RegExp(r'[^\w\s]').hasMatch(text[s - 1])) s--;
-      while (e < text.length && RegExp(r'[^\w\s]').hasMatch(text[e])) e++;
+      while (s > 0 && RegExp(r'[^\w\s]').hasMatch(text[s - 1])) { s--; }
+      while (e < text.length && RegExp(r'[^\w\s]').hasMatch(text[e])) { e++; }
       final pg = _pageController.hasClients ? _pageController.page?.round() ?? 0 : 0;
       final tp = pg - _coverCount;
       final ps = tp >= 0 && tp < _pageStarts.length - 1 ? _pageStarts[tp] : 0;

@@ -31,7 +31,6 @@ class ReaderPageLayout {
 
   int colsPerLine(BuildContext context, TextStyle Function(double?) styleBuilder) {
     final s = MediaQuery.of(context).size;
-    final p = MediaQuery.of(context).padding;
     const tp = EdgeInsets.fromLTRB(24, 48, 24, 0);
     final w = s.width - tp.left - tp.right;
     if (w <= 0) return 80;
