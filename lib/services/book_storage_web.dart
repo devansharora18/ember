@@ -85,6 +85,14 @@ class BookStorage {
     return sourcePath;
   }
 
+  static Future<String> storeBookBytes(String fileName, Uint8List bytes) async {
+    try {
+      final key = _coverFileName(fileName);
+      html.window.localStorage[_key('file_$key')] = base64Encode(bytes);
+    } catch (_) {}
+    return fileName;
+  }
+
   static Future<void> savePosition(String filePath, int position) async {
     try { html.window.localStorage[_key('pos_${_coverFileName(filePath)}')] = position.toString(); } catch (_) {}
   }
