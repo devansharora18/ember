@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import Navbar from './components/Navbar'
 import Phone3D from './components/Phone3D'
 import useLenis from './hooks/useLenis'
+import { baseUrl } from './utils/baseUrl'
 
 const features = [
   { icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253', title: 'Read EPUBs', desc: 'Import any EPUB file. Clean, distraction-free reading with bold and italic formatting.' },
@@ -83,9 +84,9 @@ export default function App() {
 
           <div className="flex justify-center gap-3 md:gap-6 flex-wrap">
             {[
-              { src: '/screenshots/library.png', label: 'Library' },
-              { src: '/screenshots/reader.png', label: 'Reader' },
-              { src: '/screenshots/rsvp.png', label: 'RSVP' },
+              { src: `${baseUrl}screenshots/library.png`, label: 'Library' },
+              { src: `${baseUrl}screenshots/reader.png`, label: 'Reader' },
+              { src: `${baseUrl}screenshots/rsvp.png`, label: 'RSVP' },
             ].map((s, i) => (
               <motion.div
                 key={s.label}
@@ -127,7 +128,7 @@ export default function App() {
             <div className="flex flex-col items-center gap-6 md:gap-8">
               <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center w-full max-w-xs sm:max-w-none">
                 <a
-                  href="/ember.apk"
+                  href={`${baseUrl}ember.apk`}
                   download
                   className="inline-flex items-center justify-center gap-3 px-6 md:px-8 py-3.5 md:py-4 bg-orange-500 text-white text-sm md:text-base font-semibold rounded-xl hover:bg-orange-400 transition-colors duration-200 cursor-pointer"
                 >

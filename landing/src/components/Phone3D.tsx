@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion, useTransform, useMotionValueEvent } from 'framer-motion'
 import { useLenisScroll } from '../hooks/useLenisScroll'
+import { baseUrl } from '../utils/baseUrl'
 
 const words = ['Introducing', 'the', 'best', 'eReader', 'app', 'for', 'you.']
 
@@ -105,7 +106,7 @@ function PhoneFrame({ portraitOpacity, rsvpOpacity, visible, focalIdx, size }: a
               style={{ opacity: portraitOpacity }}
               className="absolute flex flex-col items-center gap-3 md:gap-4"
             >
-              <img src="/icon.png" alt="Ember" className={isLg ? 'w-24 h-24' : 'w-16 h-16'} />
+                <img src={`${baseUrl}icon.png`} alt="Ember" className={isLg ? 'w-24 h-24' : 'w-16 h-16'} />
               <span className={`block font-bold font-heading text-white ${isLg ? 'text-3xl' : 'text-2xl'}`}>Ember</span>
               <span className={`block text-neutral-400 ${isLg ? 'text-sm' : 'text-xs'}`}>EPUB Reader</span>
             </motion.div>
