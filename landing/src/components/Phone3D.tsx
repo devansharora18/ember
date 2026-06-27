@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { motion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion'
+import { motion, useTransform, useMotionValueEvent } from 'framer-motion'
+import { useLenisScroll } from '../hooks/useLenisScroll'
 
 const words = ['Introducing', 'the', 'best', 'eReader', 'app', 'for', 'you.']
 
@@ -11,10 +12,7 @@ function orpIndex(length: number) {
 export default function Phone3D() {
   const ref = useRef<HTMLDivElement>(null)
   const [focal, setFocal] = useState(0)
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ['start start', 'end end'],
-  })
+  const scrollYProgress = useLenisScroll(ref)
 
   const portraitOpacity = useTransform(scrollYProgress, [0, 0.1, 0.18], [1, 1, 0])
   const wordProgress = useTransform(scrollYProgress, [0.25, 1], [0, words.length - 1])
@@ -37,7 +35,6 @@ export default function Phone3D() {
       className="relative h-[800vh] bg-black scroll-mt-16"
     >
       <div className="sticky top-0 h-screen w-full max-w-7xl mx-auto flex items-center">
-        {/* Left — Hero text */}
         <div className="w-1/2 pl-8 pr-16">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -67,7 +64,6 @@ export default function Phone3D() {
           </motion.div>
         </div>
 
-        {/* Right — Phone */}
         <div className="w-1/2 flex justify-center relative">
           <div className="relative select-none">
             <div className="w-[300px] h-[610px] rounded-[56px] bg-black p-[6px] shadow-[0_0_0_1px_#333,0_0_120px_rgba(249,115,22,0.1)]">
@@ -75,7 +71,6 @@ export default function Phone3D() {
                 <div className="w-full h-full rounded-[37px] bg-black flex items-center justify-center relative">
                   <div className="absolute top-[10px] left-1/2 -translate-x-1/2 w-[10px] h-[10px] bg-[#1a1a1a] rounded-full z-10 ring-1 ring-neutral-800" />
 
-                  {/* Portrait: Logo + text */}
                   <motion.div
                     style={{ opacity: portraitOpacity }}
                     className="absolute flex flex-col items-center gap-4"
@@ -85,7 +80,6 @@ export default function Phone3D() {
                     <span className="block text-sm text-neutral-400">EPUB Reader</span>
                   </motion.div>
 
-                  {/* RSVP text */}
                   <motion.div
                     style={{ opacity: rsvpOpacity }}
                     className="absolute inset-0 flex items-center justify-center overflow-hidden"

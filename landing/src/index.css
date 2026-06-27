@@ -8,8 +8,10 @@
 }
 
 html {
-  scroll-behavior: smooth;
   background: black;
+}
+html.lenis, html.lenis body {
+  height: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -7,11 +7,23 @@ const navLinks = [
   { label: 'Install', href: '#install' },
 ]
 
+function scrollTo(href: string) {
+  const lenis = (window as any).__lenis
+  const el = document.querySelector(href)
+  if (el) {
+    if (lenis) {
+      lenis.scrollTo(el)
+    } else {
+      el.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+}
+
 export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-neutral-800/50">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="#home" className="flex items-center gap-2 cursor-pointer">
+        <a href="#home" onClick={(e) => { e.preventDefault(); scrollTo('#home') }} className="flex items-center gap-2 cursor-pointer">
           <EmberLogo className="w-9 h-9" />
           <span className="font-heading font-semibold text-white text-lg">Ember</span>
         </a>
@@ -21,6 +33,7 @@ export default function Navbar() {
             <a
               key={link.href}
               href={link.href}
+              onClick={(e) => { e.preventDefault(); scrollTo(link.href) }}
               className="text-neutral-400 text-sm hover:text-white transition-colors duration-200 cursor-pointer"
             >
               {link.label}
