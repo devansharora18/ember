@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import EmberLogo from './EmberLogo'
 
 const navLinks = [
@@ -20,6 +21,35 @@ function scrollTo(href: string) {
 }
 
 export default function Navbar() {
+  const [active, setActive] = useState('#home')
+
+  useEffect(() => {
+    const lenis = (window as any).__lenis
+    const sections = navLinks.map((l) => document.querySelector(l.href)).filter(Boolean) as HTMLElement[]
+
+    const onScroll = () => {
+      const y = window.scrollY + window.innerHeight / 3
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const el = sections[i]
+        if (el && el.offsetTop <= y) {
+          setActive(navLinks[i].href)
+          return
+        }
+      }
+    }
+
+    if (lenis) {
+      lenis.on('scroll', onScroll)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+
+    return () => {
+      if (lenis) lenis.off('scroll', onScroll)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [])
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-neutral-800/50">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -34,7 +64,9 @@ export default function Navbar() {
               key={link.href}
               href={link.href}
               onClick={(e) => { e.preventDefault(); scrollTo(link.href) }}
-              className="text-neutral-400 text-sm hover:text-white transition-colors duration-200 cursor-pointer"
+              className={`text-sm transition-colors duration-200 cursor-pointer ${
+                active === link.href ? 'text-white' : 'text-neutral-400 hover:text-white'
+              }`}
             >
               {link.label}
             </a>
