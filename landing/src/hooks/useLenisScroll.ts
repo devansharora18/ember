@@ -1,5 +1,5 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
-import { useTransform, MotionValue, useMotionValue } from 'framer-motion'
+import { useEffect } from 'react'
+import { useMotionValue } from 'framer-motion'
 import Lenis from 'lenis'
 
 export function useLenisScroll(targetRef: React.RefObject<HTMLElement | null>) {
