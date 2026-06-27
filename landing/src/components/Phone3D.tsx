@@ -48,7 +48,7 @@ export default function Phone3D() {
             transition={{ duration: 0.8, ease: 'easeOut' }}
           >
             <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-4">
-              Read smarter,<br />not harder.
+                Force yourself to read faster.
             </h1>
             <p className="text-neutral-400 text-base md:text-lg leading-relaxed max-w-md mx-auto md:mx-0 mb-6 md:mb-8">
               Ember is a powerful EPUB reader with speed reading, bookmarks, highlights, and export — all in one beautiful app.
