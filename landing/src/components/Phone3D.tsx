@@ -165,7 +165,7 @@ function PhoneFrame({ portraitOpacity, rsvpOpacity, visible, focalIdx, size }: a
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-[100px] h-[4px] bg-neutral-500/40 rounded-full z-20" />
 
       {isLg && (
-        <div className="absolute w-[320px] h-[640px] rounded-[4rem] bg-orange-500/10 blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[640px] rounded-[4rem] bg-orange-500/5 blur-[120px] pointer-events-none" />
       )}
     </div>
   )
