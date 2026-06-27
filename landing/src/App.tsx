@@ -1,45 +1,10 @@
 import { motion } from 'framer-motion'
 import Phone3D from './components/Phone3D'
-import FeatureCard from './components/FeatureCard'
-
-const features = [
-  { icon: '📖', title: 'Read EPUBs', description: 'Import and read any EPUB file with a clean, distraction-free reading experience.' },
-  { icon: '⚡', title: 'RSVP Speed Read', description: 'Read at 300+ WPM with our rapid serial visual presentation mode.' },
-  { icon: '🔖', title: 'Bookmarks & Highlights', description: 'Mark important passages and highlight text as you read.' },
-  { icon: '🎨', title: 'Customizable', description: 'Choose fonts, sizes, dark/light mode. Make reading truly yours.' },
-  { icon: '📊', title: 'Track Progress', description: 'See how far you\'ve read and pick up right where you left off.' },
-  { icon: '💾', title: 'Export & Backup', description: 'Export your entire library with progress and settings in one file.' },
-]
 
 export default function App() {
   return (
     <div className="bg-black text-white font-body">
-      {/* Phone + RSVP Hero */}
       <Phone3D />
-
-      {/* Features */}
-      <section className="relative px-6 py-32 max-w-6xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
-          <h2 className="font-heading text-4xl md:text-5xl font-bold mb-4">
-            Everything you need
-          </h2>
-          <p className="text-neutral-400 text-lg max-w-xl mx-auto">
-            A powerful EPUB reader designed for readers who want more.
-          </p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((f, i) => (
-            <FeatureCard key={f.title} {...f} delay={i * 0.1} />
-          ))}
-        </div>
-      </section>
 
       {/* CTA */}
       <section className="relative px-6 py-32">
