@@ -74,7 +74,7 @@ export default function Navbar() {
         </div>
 
         <a
-          href="https://github.com"
+          href="https://github.com/devansharora18/ember"
           target="_blank"
           rel="noopener noreferrer"
           className="text-neutral-400 hover:text-white transition-colors duration-200 cursor-pointer"
