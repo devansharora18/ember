@@ -39,6 +39,7 @@ export default function Phone3D() {
         <div className="flex md:hidden justify-center relative mb-8">
           <PhoneFrame portraitOpacity={portraitOpacity} rsvpOpacity={rsvpOpacity} visible={visible} focalIdx={focalIdx} size="sm" />
         </div>
+        
 
         {/* Left — Hero text */}
         <div className="md:w-1/2 md:pl-8 md:pr-16 text-center md:text-left">
