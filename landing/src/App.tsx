@@ -23,24 +23,24 @@ export default function App() {
       <Phone3D />
 
       {/* Features */}
-      <section id="features" className="relative px-6 py-32 scroll-mt-16">
+      <section id="features" className="relative px-4 md:px-6 py-20 md:py-32 scroll-mt-16">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-20"
+            className="text-center mb-12 md:mb-20"
           >
-            <h2 className="font-heading text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4">
               Everything you need
             </h2>
-            <p className="text-neutral-400 text-lg max-w-xl mx-auto">
+            <p className="text-neutral-400 text-base md:text-lg max-w-xl mx-auto">
               A powerful EPUB reader designed for readers who want more.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {features.map((f, i) => (
               <motion.div
                 key={f.title}
@@ -48,15 +48,15 @@ export default function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-80px' }}
                 transition={{ duration: 0.6, delay: i * 0.1, ease: 'easeOut' }}
-                className="p-8 rounded-2xl bg-neutral-900/50 border border-neutral-800 hover:border-orange-500/30 transition-colors duration-300 cursor-pointer group"
+                className="p-5 md:p-8 rounded-2xl bg-neutral-900/50 border border-neutral-800 hover:border-orange-500/30 transition-colors duration-300 cursor-pointer group"
               >
-                <div className="w-10 h-10 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center mb-4 group-hover:border-orange-500/40 transition-colors duration-200">
-                  <svg className="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center mb-3 md:mb-4 group-hover:border-orange-500/40 transition-colors duration-200">
+                  <svg className="w-4 h-4 md:w-5 md:h-5 text-orange-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d={f.icon} />
                   </svg>
                 </div>
-                <h3 className="text-white font-semibold text-lg mb-2">{f.title}</h3>
-                <p className="text-neutral-400 text-sm leading-relaxed">{f.desc}</p>
+                <h3 className="text-white font-semibold text-base md:text-lg mb-1 md:mb-2">{f.title}</h3>
+                <p className="text-neutral-400 text-xs md:text-sm leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -64,24 +64,24 @@ export default function App() {
       </section>
 
       {/* Screenshots */}
-      <section id="screenshots" className="relative px-6 py-32 scroll-mt-16">
+      <section id="screenshots" className="relative px-4 md:px-6 py-20 md:py-32 scroll-mt-16">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-20"
+            className="text-center mb-12 md:mb-20"
           >
-            <h2 className="font-heading text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4">
               See it in action
             </h2>
-            <p className="text-neutral-400 text-lg max-w-xl mx-auto">
+            <p className="text-neutral-400 text-base md:text-lg max-w-xl mx-auto">
               A clean, focused reading experience on any device.
             </p>
           </motion.div>
 
-          <div className="flex justify-center gap-6">
+          <div className="flex justify-center gap-3 md:gap-6 flex-wrap">
             {[
               { src: '/screenshots/library.png', label: 'Library' },
               { src: '/screenshots/reader.png', label: 'Reader' },
@@ -93,16 +93,16 @@ export default function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: i * 0.1 }}
-                className="text-center"
+                className="text-center w-[28%] min-w-[160px] md:w-[280px]"
               >
-                <div className="overflow-hidden mb-3">
+                <div className="overflow-hidden mb-2 md:mb-3">
                   <img
                     src={s.src}
                     alt={s.label}
-                    className="w-[280px] h-auto"
+                    className="w-full h-auto"
                   />
                 </div>
-                <p className="text-neutral-400 text-sm font-medium">{s.label}</p>
+                <p className="text-neutral-400 text-xs md:text-sm font-medium">{s.label}</p>
               </motion.div>
             ))}
           </div>
@@ -110,28 +110,28 @@ export default function App() {
       </section>
 
       {/* Install */}
-      <section id="install" className="relative h-screen flex items-center justify-center scroll-mt-16">
-        <div className="max-w-2xl mx-auto text-center px-6">
+      <section id="install" className="relative min-h-screen flex items-center justify-center scroll-mt-16 px-4">
+        <div className="max-w-2xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="font-heading text-4xl md:text-5xl font-bold mb-6">
+            <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6">
               Download Ember
             </h2>
-            <p className="text-neutral-400 text-lg mb-12">
+            <p className="text-neutral-400 text-base md:text-lg mb-8 md:mb-12">
               Available on Android. More platforms coming soon.
             </p>
-            <div className="flex flex-col items-center gap-8">
-              <div className="flex flex-wrap gap-4 justify-center">
+            <div className="flex flex-col items-center gap-6 md:gap-8">
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center w-full max-w-xs sm:max-w-none">
                 <a
                   href="/ember.apk"
                   download
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-400 transition-colors duration-200 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-3 px-6 md:px-8 py-3.5 md:py-4 bg-orange-500 text-white text-sm md:text-base font-semibold rounded-xl hover:bg-orange-400 transition-colors duration-200 cursor-pointer"
                 >
-                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199l2.807 1.626a1 1 0 0 1 0 1.732l-2.807 1.626L15.206 12l2.492-2.492zM5.864 2.658L16.8 8.99l-2.302 2.302-8.635-8.634z"/>
                   </svg>
                   Download APK
@@ -140,20 +140,20 @@ export default function App() {
                   href="https://ember.devansharora.in"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition-colors duration-200 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-3 px-6 md:px-8 py-3.5 md:py-4 bg-white text-black text-sm md:text-base font-semibold rounded-xl hover:bg-neutral-200 transition-colors duration-200 cursor-pointer"
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                   </svg>
                   Open Web App
                 </a>
               </div>
 
-              <div className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-900 border border-neutral-800 rounded-xl">
-                <svg className="w-6 h-6 text-neutral-400" viewBox="0 0 24 24" fill="currentColor">
+              <div className="inline-flex items-center gap-2 px-5 md:px-6 py-2.5 md:py-3 bg-neutral-900 border border-neutral-800 rounded-xl">
+                <svg className="w-5 h-5 md:w-6 md:h-6 text-neutral-400" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199l2.807 1.626a1 1 0 0 1 0 1.732l-2.807 1.626L15.206 12l2.492-2.492zM5.864 2.658L16.8 8.99l-2.302 2.302-8.635-8.634z"/>
                 </svg>
-                <span className="text-neutral-500 text-sm">Play Store — Coming soon</span>
+                <span className="text-neutral-500 text-xs md:text-sm">Play Store — Coming soon</span>
               </div>
             </div>
           </motion.div>
@@ -161,10 +161,10 @@ export default function App() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-12 border-t border-neutral-900">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-neutral-600 text-sm">Ember — EPUB Reader</p>
-          <p className="text-neutral-700 text-xs">Made with care</p>
+      <footer className="px-4 md:px-6 py-8 md:py-12 border-t border-neutral-900">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 md:gap-4">
+          <p className="text-neutral-600 text-xs md:text-sm">Ember — EPUB Reader</p>
+          <p className="text-neutral-700 text-[10px] md:text-xs">Made with care</p>
         </div>
       </footer>
     </div>
