@@ -56,7 +56,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   // --------------- Book actions ---------------
 
   Future<void> _addBooks() async {
-    final result = await FilePicker.pickFiles(allowMultiple: true, type: FileType.custom, allowedExtensions: ['epub']);
+    final result = await FilePicker.pickFiles(allowMultiple: true, withData: true, type: FileType.custom, allowedExtensions: ['epub']);
     if (result == null || result.files.isEmpty) return;
     final paths = <String>[];
     for (final f in result.files) {
