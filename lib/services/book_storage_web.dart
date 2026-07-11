@@ -57,16 +57,8 @@ class BookStorage {
     try {
       final jsonList = <Map<String, dynamic>>[];
       for (final book in books) {
-        String? coverKey;
-        if (book.coverBytes != null) {
-          coverKey = _coverFileName(book.filePath);
-          html.window.localStorage[_key('cover_$coverKey')] = base64Encode(book.coverBytes!);
-        }
-        String? fileKey;
-        if (book.fileBytes != null) {
-          fileKey = _coverFileName(book.filePath);
-          html.window.localStorage[_key('file_$fileKey')] = base64Encode(book.fileBytes!);
-        }
+        final coverKey = book.coverBytes != null ? _coverFileName(book.filePath) : null;
+        final fileKey = book.fileBytes != null ? _coverFileName(book.filePath) : null;
         jsonList.add({
           'title': book.title,
           'author': book.author,
@@ -79,6 +71,18 @@ class BookStorage {
       }
       html.window.localStorage[_key('books')] = jsonEncode({'books': jsonList, 'columns': columns});
     } catch (_) {}
+    for (final book in books) {
+      try {
+        if (book.coverBytes != null) {
+          html.window.localStorage[_key('cover_${_coverFileName(book.filePath)}')] = base64Encode(book.coverBytes!);
+        }
+      } catch (_) {}
+      try {
+        if (book.fileBytes != null) {
+          html.window.localStorage[_key('file_${_coverFileName(book.filePath)}')] = base64Encode(book.fileBytes!);
+        }
+      } catch (_) {}
+    }
   }
 
   static Future<String> storeBookFile(String sourcePath) async {
