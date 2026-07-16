@@ -6,7 +6,10 @@ An e-book reader with RSVP speed reading, built for Android.
 
 
 
-https://github.com/user-attachments/assets/33003ee7-9d86-4828-b855-1abd1d66d0c3
+
+
+https://github.com/user-attachments/assets/c5fbc4c2-ec97-48b5-814f-04dda4a564f7
+
 
 
 
