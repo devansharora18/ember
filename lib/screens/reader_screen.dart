@@ -17,6 +17,8 @@ import 'reader/reader_rsvp_screen.dart';
 import 'reader/reader_sheets.dart';
 import 'reader/reader_text_page.dart';
 
+final _chaptersCache = <String, List<EpubChapter>>{};
+
 class ReaderScreen extends ConsumerStatefulWidget {
   final Book book;
   const ReaderScreen({super.key, required this.book});
@@ -37,6 +39,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   int _currentPage = 0;
   int _totalPages = 1;
   List<int> _pageStarts = [0];
+  final _paginationSig = _PaginationSig();
 
   // ── display settings ──
   double _fontSize = 16;
@@ -96,12 +99,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   // ─────────────────── content loading ───────────────────
 
   Future<void> _loadContent() async {
-    final chapters = await Future(() {
-      if (widget.book.fileBytes != null) {
-        return EpubParser.extractChaptersFromBytes(widget.book.fileBytes!);
-      }
-      return EpubParser.extractChapters(widget.book.filePath);
-    });
+    final chapters = await _parseBook();
 
     final savedPos = await BookStorage.loadPosition(widget.book.filePath);
     final savedFontSize = await BookStorage.loadFontSize(widget.book.filePath);
@@ -167,6 +165,24 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _scheduleHide();
   }
 
+  /// Parses the book, reusing a cached result if the same book was opened
+  /// before. EPUB parsing (zip decode + chapter pass) is expensive, so redoing
+  /// it on every reopen is what made already-read books take so long to load.
+  Future<List<EpubChapter>> _parseBook() async {
+    final cached = _chaptersCache[widget.book.filePath];
+    if (cached != null) return cached;
+
+    final key = widget.book.filePath;
+    final chapters = await Future(() {
+      if (widget.book.fileBytes != null) {
+        return EpubParser.extractChaptersFromBytes(widget.book.fileBytes!);
+      }
+      return EpubParser.extractChapters(widget.book.filePath);
+    });
+    if (chapters.isNotEmpty) _chaptersCache[key] = chapters;
+    return chapters;
+  }
+
   // ─────────────────── text style ───────────────────
 
   TextStyle _textStyle({double? fontSize, Color? color, FontWeight? fontWeight, double? height, double? letterSpacing}) {
@@ -185,6 +201,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   int get _coverCount => widget.book.coverBytes != null ? 1 : 0;
 
   void _updatePagination() {
+    // Recomputed only when the text, font size, or screen size actually
+    // change. Computing page breaks is cheap (measures a slice, not the whole
+    // book), but we still avoid repeating it on every rebuild.
+    final s = MediaQuery.of(context).size;
+    final sig = (s.width.toStringAsFixed(1), s.height.toStringAsFixed(1), _fontSize, _fullText.length);
+    if (_paginationSig.value == sig) return;
+    _paginationSig.value = sig;
+
     final cpp = _layout.charsPerPage(context, (fs) => _textStyle(fontSize: fs));
     final cols = _layout.colsPerLine(context, (fs) => _textStyle(fontSize: fs));
     _pageStarts = _layout.computePageBreaks(cpp, cols);
@@ -872,4 +896,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       ),
     );
   }
+}
+
+class _PaginationSig {
+  (String, String, double, int)? value;
 }
