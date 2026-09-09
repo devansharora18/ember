@@ -27,6 +27,10 @@ https://github.com/user-attachments/assets/c5fbc4c2-ec97-48b5-814f-04dda4a564f7
 
 **RSVP** — word-by-word speed reading at 50–400 WPM with ORP focal letter highlighting, per-word timing, and breath pauses.
 
+## Download
+
+[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80">](https://play.google.com/store/apps/details?id=in.devansharora.ember)
+
 ## Build
 
 ```
