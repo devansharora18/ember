@@ -126,45 +126,18 @@ export default function App() {
               Available on Android. More platforms coming soon.
             </p>
 
-            <div className="mb-8 md:mb-10 p-5 md:p-6 bg-neutral-900 border border-neutral-800 rounded-xl text-left">
-              <h3 className="text-white font-semibold text-sm md:text-base mb-3">Play Store — Closed Testing</h3>
-              <ol className="text-neutral-400 text-xs md:text-sm space-y-3 list-decimal list-inside">
-                <li>
-                  <span>Join the testing group: </span>
-                  <a
-                    href="https://groups.google.com/g/ember-closed-testing"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-orange-400 hover:text-orange-300 underline transition-colors"
-                  >
-                    ember-closed-testing
-                  </a>
-                </li>
-                <li>
-                  <span>Then opt in &amp; install: </span>
-                  <a
-                    href="https://play.google.com/apps/testing/in.devansharora.ember"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-orange-400 hover:text-orange-300 underline transition-colors"
-                  >
-                    Get it on Play Store
-                  </a>
-                </li>
-              </ol>
-            </div>
-
             <div className="flex flex-col items-center gap-6 md:gap-8">
               <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center w-full max-w-xs sm:max-w-none">
                 <a
-                  href={`${baseUrl}ember.apk`}
-                  download
+                  href="https://play.google.com/store/apps/details?id=in.devansharora.ember"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-3 px-6 md:px-8 py-3.5 md:py-4 bg-orange-500 text-white text-sm md:text-base font-semibold rounded-xl hover:bg-orange-400 transition-colors duration-200 cursor-pointer"
                 >
                   <svg className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199l2.807 1.626a1 1 0 0 1 0 1.732l-2.807 1.626L15.206 12l2.492-2.492zM5.864 2.658L16.8 8.99l-2.302 2.302-8.635-8.634z"/>
                   </svg>
-                  Download APK
+                  Get it on Google Play
                 </a>
                 <a
                   href="https://ember.devansharora.in"
