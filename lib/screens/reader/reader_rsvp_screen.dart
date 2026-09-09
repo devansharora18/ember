@@ -68,6 +68,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   void dispose() {
     _timer?.cancel();
     _hideTimer?.cancel();
+    _measurer.dispose();
     super.dispose();
   }
 

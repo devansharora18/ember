@@ -17,7 +17,27 @@ import 'reader/reader_rsvp_screen.dart';
 import 'reader/reader_sheets.dart';
 import 'reader/reader_text_page.dart';
 
+// Bounded cache of parsed chapters so re-opening a previously-read book is
+// fast, without retaining the contents of every book ever opened in memory.
+// LinkedHashMap preserves insertion order, letting us evict the oldest entry
+// when the cache exceeds its capacity.
 final _chaptersCache = <String, List<EpubChapter>>{};
+const _chaptersCacheMax = 4;
+
+List<EpubChapter> _cacheChapters(String key, List<EpubChapter> chapters) {
+  _chaptersCache.remove(key);
+  _chaptersCache[key] = chapters;
+  while (_chaptersCache.length > _chaptersCacheMax) {
+    _chaptersCache.remove(_chaptersCache.keys.first);
+  }
+  return chapters;
+}
+
+List<EpubChapter>? _cachedChapters(String key) {
+  final chapters = _chaptersCache.remove(key);
+  if (chapters != null) _chaptersCache[key] = chapters; // refresh LRU order
+  return chapters;
+}
 
 class ReaderScreen extends ConsumerStatefulWidget {
   final Book book;
@@ -90,6 +110,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   @override
   void dispose() {
     _saveProgress();
+    _rsvpOverlay?.remove();
+    _rsvpOverlay = null;
     _pageController.dispose();
     _hideTimer?.cancel();
     _searchController.dispose();
@@ -169,7 +191,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   /// before. EPUB parsing (zip decode + chapter pass) is expensive, so redoing
   /// it on every reopen is what made already-read books take so long to load.
   Future<List<EpubChapter>> _parseBook() async {
-    final cached = _chaptersCache[widget.book.filePath];
+    final cached = _cachedChapters(widget.book.filePath);
     if (cached != null) return cached;
 
     final key = widget.book.filePath;
@@ -179,7 +201,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       }
       return EpubParser.extractChapters(widget.book.filePath);
     });
-    if (chapters.isNotEmpty) _chaptersCache[key] = chapters;
+    if (chapters.isNotEmpty) return _cacheChapters(key, chapters);
     return chapters;
   }
 
@@ -635,6 +657,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: rb.size.width);
     final po = tp.getPositionForOffset(lp);
+    tp.dispose();
     if (po.offset < 0 || po.offset >= text.length) return;
     _lookupWord(text, po.offset);
   }

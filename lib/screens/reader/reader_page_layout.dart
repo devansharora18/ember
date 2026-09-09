@@ -25,7 +25,9 @@ class ReaderPageLayout {
       text: TextSpan(text: 'X', style: _applyStyle(styleBuilder)),
       textDirection: TextDirection.ltr,
     )..layout();
-    return painter.height > 0 ? painter.height : 1;
+    final h = (painter.height as double?) ?? 1.0;
+    painter.dispose();
+    return h > 0 ? h : 1.0;
   }
 
   double _avgCharsPerLine(double width, TextStyle Function(double?) styleBuilder) {
@@ -37,6 +39,7 @@ class ReaderPageLayout {
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: width);
     final lines = painter.computeLineMetrics().length;
+    painter.dispose();
     return lines > 0 ? sampleLength / lines : 1;
   }
 
