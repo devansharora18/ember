@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/book_storage.dart';
+import '../../services/reading_stats_tracker.dart';
 
 class RsvpScreen extends StatefulWidget {
   final String fullText;
@@ -40,6 +41,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   late final List<_Word> _words;
   late final TextStyle _measuredStyle;
   final TextPainter _measurer = TextPainter(textDirection: TextDirection.ltr);
+  Timer? _statsHeartbeat;
 
   static const _minWpm = 50;
   static const _maxWpm = 400;
@@ -55,6 +57,10 @@ class _RsvpScreenState extends State<RsvpScreen> {
     _isFirstWordOfSentence = _index == 0 || _isWordSentenceEnd(_words[_index - 1].text);
     _loadWpm();
     _scheduleHide();
+    ReadingStatsTracker.instance.begin();
+    _statsHeartbeat = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) ReadingStatsTracker.instance.addSeconds(1);
+    });
   }
 
   Future<void> _loadWpm() async {
@@ -68,6 +74,9 @@ class _RsvpScreenState extends State<RsvpScreen> {
   void dispose() {
     _timer?.cancel();
     _hideTimer?.cancel();
+    _statsHeartbeat?.cancel();
+    _statsHeartbeat = null;
+    ReadingStatsTracker.instance.end();
     _measurer.dispose();
     super.dispose();
   }
@@ -449,7 +458,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
               Container(padding: EdgeInsets.only(bottom: pad.bottom), color: bg, child: SizedBox(height: 56, child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
                 IconButton(icon: Icon(Icons.skip_previous, color: fg, size: 28), onPressed: () => _skip(-50)),
                 IconButton(icon: Icon(Icons.fast_rewind, color: fg, size: 24), onPressed: () => _skip(-5)),
-                SizedBox(width: 56, height: 56, child: IconButton(icon: Icon(_playing ? Icons.pause : Icons.play_arrow, color: fg, size: 32), onPressed: _togglePlaying)),
+                SizedBox(width: 56, height: 56, child: IconButton(icon: Icon(_playing ? Icons.pause : Icons.play_arrow, size: 32), onPressed: _togglePlaying)),
                 IconButton(icon: Icon(Icons.fast_forward, color: fg, size: 24), onPressed: () => _skip(5)),
                 IconButton(icon: Icon(Icons.skip_next, color: fg, size: 28), onPressed: () => _skip(50)),
               ]))),

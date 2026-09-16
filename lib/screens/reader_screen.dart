@@ -8,6 +8,7 @@ import '../../models/format_range.dart';
 import '../../providers/book_list_provider.dart';
 import '../../services/book_storage.dart';
 import '../../services/epub_parser.dart';
+import '../../services/reading_stats_tracker.dart';
 import 'reader/reader_controls.dart';
 import 'reader/reader_dialogs.dart';
 import 'reader/reader_dictionary_dialog.dart';
@@ -70,6 +71,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   bool _loading = true;
   bool _controlsVisible = true;
   Timer? _hideTimer;
+  Timer? _statsHeartbeat;
+
+  // Strategy: track seconds via a 1s heartbeat while the screen is open, and
+  // words via forward deltas on the reading position. See _trackWords.
+  int _lastStatsPosition = 0;
+  bool _statsInitialized = false;
 
   // ── overlays ──
   bool _goToPageMode = false;
@@ -105,6 +112,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     super.initState();
     _pageController.addListener(_onPageScrolling);
     _loadContent();
+    ReadingStatsTracker.instance.begin();
+    _statsHeartbeat = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) ReadingStatsTracker.instance.addSeconds(1);
+    });
   }
 
   @override
@@ -112,6 +123,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _saveProgress();
     _rsvpOverlay?.remove();
     _rsvpOverlay = null;
+    _statsHeartbeat?.cancel();
+    _statsHeartbeat = null;
+    ReadingStatsTracker.instance.end();
     _pageController.dispose();
     _hideTimer?.cancel();
     _searchController.dispose();
@@ -160,6 +174,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       _fullText = text;
       _totalChars = tc;
       _position = savedPos.clamp(0, tc);
+      _lastStatsPosition = _position;
+      _statsInitialized = true;
       if (savedFontSize != null) _fontSize = savedFontSize.clamp(_minFontSize, _maxFontSize);
       if (savedFontFamily != null) _fontFamily = savedFontFamily;
       if (savedDarkMode != null) _darkMode = savedDarkMode;
@@ -252,10 +268,29 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   void _onPageChanged(int pg) {
     if (_chapters.isEmpty || pg >= _pageStarts.length) return;
+    _trackWordsTo(_pageStarts[pg]);
     _currentPage = pg;
     _position = _pageStarts[pg];
     _isBookmarked = _bookmarks.contains(pg);
     BookStorage.savePosition(widget.book.filePath, _position);
+  }
+
+  // Records words read for forward reading movement. Page changes include
+  // jumps (go-to-page, RSVP, search), which would massively overcount, so we
+  // clamp a single event's contribution.
+  void _trackWordsTo(int pos) {
+    if (!_statsInitialized) {
+      _lastStatsPosition = pos;
+      _statsInitialized = true;
+      return;
+    }
+    var delta = pos - _lastStatsPosition;
+    _lastStatsPosition = pos;
+    if (delta <= 0) return;
+    const maxCharsPerPage = 5000;
+    if (delta > maxCharsPerPage) return;
+    // Average English word ~5 chars.
+    ReadingStatsTracker.instance.addWords(delta ~/ 5);
   }
 
   // ─────────────────── controls visibility ───────────────────
