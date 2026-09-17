@@ -5,6 +5,14 @@ import '../models/reading_stats.dart';
 import '../providers/reading_stats_provider.dart';
 import '../services/reading_stats_tracker.dart';
 
+/// Black + orange palette used across the stats UI.
+const _orange = Color(0xFFF97316);
+const _orangeSoft = Color(0xFF7C4A1E);
+const _cardBg = Color(0xFF0D0D0D);
+const _cardBorder = Color(0xFF1E1E1E);
+const _textDim = Color(0xFF888888);
+const _textFaint = Color(0xFF555555);
+
 class StatsScreen extends ConsumerWidget {
   const StatsScreen({super.key});
 
@@ -21,7 +29,7 @@ class StatsScreen extends ConsumerWidget {
     final daysRead = snap.daily.values.where((d) => d.words > 0).length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: Colors.black,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
         child: SafeArea(
@@ -40,7 +48,11 @@ class StatsScreen extends ConsumerWidget {
                 ),
                 Padding(
                   padding: EdgeInsets.only(bottom: 10 * s),
-                  child: Text('Stats', style: GoogleFonts.inter(color: Colors.white, fontSize: 20 * s, fontWeight: FontWeight.w600, letterSpacing: 1 * s)),
+                  child: Row(children: [
+                    Icon(Icons.insights, color: _orange, size: 18 * s),
+                    SizedBox(width: 8 * s),
+                    Text('Stats', style: GoogleFonts.inter(color: Colors.white, fontSize: 20 * s, fontWeight: FontWeight.w600, letterSpacing: 1 * s)),
+                  ]),
                 ),
               ],
             ),
@@ -81,17 +93,29 @@ class StatsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _sectionLabel(String text, double s) => Text(
-        text.toUpperCase(),
-        style: GoogleFonts.inter(color: const Color(0xFF666666), fontSize: 11 * s, fontWeight: FontWeight.w600, letterSpacing: 1.2 * s),
-      );
+  Widget _sectionLabel(String text, double s) => Row(children: [
+        Container(width: 3 * s, height: 12 * s, color: _orange),
+        SizedBox(width: 8 * s),
+        Text(
+          text.toUpperCase(),
+          style: GoogleFonts.inter(color: _textFaint, fontSize: 11 * s, fontWeight: FontWeight.w600, letterSpacing: 1.4 * s),
+        ),
+      ]);
 
   Widget _buildStreakCard(int current, int best, double s) {
+    final hasStreak = current > 0;
     return Container(
       padding: EdgeInsets.all(22 * s),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E0E0E),
-        border: Border.all(color: const Color(0xFF1C1C1C)),
+        color: _cardBg,
+        border: Border.all(color: _cardBorder),
+        gradient: hasStreak
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF140A04), Color(0xFF0D0D0D)],
+              )
+            : null,
       ),
       child: Row(children: [
         Container(
@@ -99,23 +123,27 @@ class StatsScreen extends ConsumerWidget {
           height: 52 * s,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: const Color(0xFF1A0F0C),
-            border: Border.all(color: const Color(0xFF3A1C14)),
+            color: hasStreak ? const Color(0xFF1F140C) : const Color(0xFF141414),
+            border: Border.all(color: hasStreak ? _orangeSoft : _cardBorder),
           ),
-          child: Icon(Icons.local_fire_department, color: const Color(0xFFE05555), size: 28 * s),
+          child: Icon(
+            hasStreak ? Icons.local_fire_department : Icons.local_fire_department_outlined,
+            color: hasStreak ? _orange : _textFaint,
+            size: 28 * s,
+          ),
         ),
         SizedBox(width: 18 * s),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
             Text('$current', style: GoogleFonts.inter(color: Colors.white, fontSize: 30 * s, fontWeight: FontWeight.w700, letterSpacing: 0.5 * s, height: 1)),
             SizedBox(width: 6 * s),
-            Text('day${current == 1 ? '' : 's'}', style: GoogleFonts.inter(color: const Color(0xFF888888), fontSize: 14 * s, fontWeight: FontWeight.w500)),
+            Text('day${current == 1 ? '' : 's'}', style: GoogleFonts.inter(color: _textDim, fontSize: 14 * s, fontWeight: FontWeight.w500)),
           ]),
           SizedBox(height: 6 * s),
-          Text('Current streak', style: GoogleFonts.inter(color: const Color(0xFF666666), fontSize: 12 * s)),
+          Text('Current streak', style: GoogleFonts.inter(color: _textFaint, fontSize: 12 * s)),
         ])),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('BEST', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 10 * s, fontWeight: FontWeight.w600, letterSpacing: 1 * s)),
+          Text('BEST', style: GoogleFonts.inter(color: _textFaint, fontSize: 10 * s, fontWeight: FontWeight.w600, letterSpacing: 1 * s)),
           SizedBox(height: 4 * s),
           Text('$best', style: GoogleFonts.inter(color: Colors.white, fontSize: 18 * s, fontWeight: FontWeight.w700)),
         ]),
@@ -128,8 +156,8 @@ class StatsScreen extends ConsumerWidget {
     return Container(
       padding: EdgeInsets.all(20 * s),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E0E0E),
-        border: Border.all(color: const Color(0xFF1C1C1C)),
+        color: _cardBg,
+        border: Border.all(color: _cardBorder),
       ),
       child: Row(children: [
         SizedBox(
@@ -143,7 +171,7 @@ class StatsScreen extends ConsumerWidget {
                 value: pct,
                 strokeWidth: 5 * s,
                 backgroundColor: const Color(0xFF1C1C1C),
-                valueColor: AlwaysStoppedAnimation(reached ? const Color(0xFF4CAF50) : const Color(0xFFE05555)),
+                valueColor: AlwaysStoppedAnimation(_orange),
                 strokeCap: StrokeCap.round,
               ),
             ),
@@ -152,20 +180,19 @@ class StatsScreen extends ConsumerWidget {
         ),
         SizedBox(width: 20 * s),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('TODAY', style: GoogleFonts.inter(color: const Color(0xFF666666), fontSize: 11 * s, fontWeight: FontWeight.w600, letterSpacing: 1 * s)),
+          Text('TODAY', style: GoogleFonts.inter(color: _textFaint, fontSize: 11 * s, fontWeight: FontWeight.w600, letterSpacing: 1.2 * s)),
           SizedBox(height: 8 * s),
           Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
             Text('$words', style: GoogleFonts.inter(color: Colors.white, fontSize: 22 * s, fontWeight: FontWeight.w700, height: 1)),
-            Text(' / $goal words', style: GoogleFonts.inter(color: const Color(0xFF666666), fontSize: 13 * s)),
+            Text(' / $goal words', style: GoogleFonts.inter(color: _textDim, fontSize: 13 * s)),
           ]),
           SizedBox(height: 6 * s),
           Row(children: [
-            Icon(reached ? Icons.check_circle : Icons.trending_up,
-                size: 14 * s, color: reached ? const Color(0xFF4CAF50) : const Color(0xFF888888)),
+            Icon(reached ? Icons.check_circle : Icons.trending_up, size: 14 * s, color: reached ? _orange : _textDim),
             SizedBox(width: 6 * s),
             Text(
               reached ? 'Goal reached' : '${(goal - words).clamp(0, 9999999)} words to go',
-              style: GoogleFonts.inter(color: reached ? const Color(0xFF4CAF50) : const Color(0xFF888888), fontSize: 12 * s),
+              style: GoogleFonts.inter(color: reached ? _orange : _textDim, fontSize: 12 * s),
             ),
           ]),
         ])),
@@ -186,10 +213,10 @@ class StatsScreen extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(vertical: 12 * s),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: g == goal ? const Color(0xFFE05555) : const Color(0xFF121212),
-                    border: Border.all(color: g == goal ? const Color(0xFFE05555) : const Color(0xFF222222)),
+                    color: g == goal ? _orange : const Color(0xFF121212),
+                    border: Border.all(color: g == goal ? _orange : const Color(0xFF222222)),
                   ),
-                  child: Text('$g', style: GoogleFonts.inter(color: g == goal ? Colors.white : const Color(0xFF888888), fontSize: 13 * s, fontWeight: FontWeight.w600)),
+                  child: Text('$g', style: GoogleFonts.inter(color: g == goal ? Colors.white : _textDim, fontSize: 13 * s, fontWeight: FontWeight.w700)),
                 ),
               ),
             ),
@@ -204,15 +231,18 @@ class StatsScreen extends ConsumerWidget {
     return Container(
       padding: EdgeInsets.all(16 * s),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E0E0E),
-        border: Border.all(color: const Color(0xFF1C1C1C)),
+        color: _cardBg,
+        border: Border.all(color: _cardBorder),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, size: 16 * s, color: const Color(0xFF555555)),
-        SizedBox(height: 12 * s),
+        Row(children: [
+          Icon(icon, size: 15 * s, color: _orange),
+          const Spacer(),
+        ]),
+        SizedBox(height: 14 * s),
         Text(value, style: GoogleFonts.inter(color: Colors.white, fontSize: 19 * s, fontWeight: FontWeight.w700)),
         SizedBox(height: 2 * s),
-        Text(label, style: GoogleFonts.inter(color: const Color(0xFF666666), fontSize: 11 * s)),
+        Text(label, style: GoogleFonts.inter(color: _textDim, fontSize: 11 * s)),
       ]),
     );
   }
@@ -237,12 +267,13 @@ class StatsScreen extends ConsumerWidget {
       return (words / goal * 4).ceil().clamp(1, 3);
     }
 
+    // Dark → orange intensity scale.
     const colors = [
       Color(0xFF1A1A1A),
-      Color(0xFF3A1C14),
-      Color(0xFF7A3020),
-      Color(0xFFB04028),
-      Color(0xFFE05555),
+      Color(0xFF3A2110),
+      Color(0xFF7A4118),
+      Color(0xFFC15F16),
+      _orange,
     ];
 
     // Column c is a week; row r is a weekday (0 = Sunday).
@@ -294,7 +325,7 @@ class StatsScreen extends ConsumerWidget {
                         child: labels[i].span >= 2
                             ? Text(
                                 labels[i].text,
-                                style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 10 * s),
+                                style: GoogleFonts.inter(color: _textFaint, fontSize: 10 * s),
                                 softWrap: false,
                                 overflow: TextOverflow.clip,
                               )
@@ -355,10 +386,10 @@ class StatsScreen extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       '${_formatShortDate(start)} — ${_formatShortDate(today)}',
-                      style: GoogleFonts.inter(color: const Color(0xFF444444), fontSize: 10 * s),
+                      style: GoogleFonts.inter(color: _textFaint, fontSize: 10 * s),
                     ),
                   ),
-                  Text('Less', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 10 * s)),
+                  Text('Less', style: GoogleFonts.inter(color: _textFaint, fontSize: 10 * s)),
                   SizedBox(width: 6 * s),
                   for (final c in colors) ...[
                     Container(
@@ -369,7 +400,7 @@ class StatsScreen extends ConsumerWidget {
                     ),
                   ],
                   SizedBox(width: 6 * s),
-                  Text('More', style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 10 * s)),
+                  Text('More', style: GoogleFonts.inter(color: _textFaint, fontSize: 10 * s)),
                 ],
               ),
             ],
@@ -386,7 +417,7 @@ class StatsScreen extends ConsumerWidget {
     if (label.isEmpty) return const SizedBox.shrink();
     return Text(
       label,
-      style: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 9 * s),
+      style: GoogleFonts.inter(color: _textFaint, fontSize: 9 * s),
     );
   }
 
