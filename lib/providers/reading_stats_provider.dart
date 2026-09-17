@@ -12,11 +12,13 @@ final readingStatsProvider = NotifierProvider<ReadingStatsController, ReadingSta
 class ReadingStatsSnapshot {
   final DailyReading today;
   final ReadingStreak streak;
+  final Map<String, DailyReading> daily;
   final bool loaded;
 
   const ReadingStatsSnapshot({
     required this.today,
     required this.streak,
+    this.daily = const {},
     this.loaded = true,
   });
 }
@@ -35,11 +37,13 @@ class ReadingStatsController extends Notifier<ReadingStatsSnapshot> {
     return ReadingStatsSnapshot(
       today: tracker.today,
       streak: tracker.streak,
+      daily: tracker.daily,
     );
   }
 
   void _notify() => state = ReadingStatsSnapshot(
         today: ReadingStatsTracker.instance.today,
         streak: ReadingStatsTracker.instance.streak,
+        daily: ReadingStatsTracker.instance.daily,
       );
 }

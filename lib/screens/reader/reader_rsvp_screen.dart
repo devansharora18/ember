@@ -41,7 +41,6 @@ class _RsvpScreenState extends State<RsvpScreen> {
   late final List<_Word> _words;
   late final TextStyle _measuredStyle;
   final TextPainter _measurer = TextPainter(textDirection: TextDirection.ltr);
-  Timer? _statsHeartbeat;
 
   static const _minWpm = 50;
   static const _maxWpm = 400;
@@ -58,9 +57,6 @@ class _RsvpScreenState extends State<RsvpScreen> {
     _loadWpm();
     _scheduleHide();
     ReadingStatsTracker.instance.begin();
-    _statsHeartbeat = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) ReadingStatsTracker.instance.addSeconds(1);
-    });
   }
 
   Future<void> _loadWpm() async {
@@ -74,8 +70,6 @@ class _RsvpScreenState extends State<RsvpScreen> {
   void dispose() {
     _timer?.cancel();
     _hideTimer?.cancel();
-    _statsHeartbeat?.cancel();
-    _statsHeartbeat = null;
     ReadingStatsTracker.instance.end();
     _measurer.dispose();
     super.dispose();

@@ -38,12 +38,14 @@ class ReadingStreak {
   int best;
   String? lastDay; // last day that counted toward the streak (yyyy-MM-dd)
   int totalWords;
+  int dailyGoal; // target words per day, user-configurable
 
   ReadingStreak({
     this.current = 0,
     this.best = 0,
     this.lastDay,
     this.totalWords = 0,
+    this.dailyGoal = 500,
   });
 
   Map<String, dynamic> toJson() => {
@@ -51,6 +53,7 @@ class ReadingStreak {
         'best': best,
         if (lastDay != null) 'lastDay': lastDay,
         'totalWords': totalWords,
+        'dailyGoal': dailyGoal,
       };
 
   factory ReadingStreak.fromJson(Map<String, dynamic> json) => ReadingStreak(
@@ -58,6 +61,7 @@ class ReadingStreak {
         best: (json['best'] as num?)?.toInt() ?? 0,
         lastDay: json['lastDay'] as String?,
         totalWords: (json['totalWords'] as num?)?.toInt() ?? 0,
+        dailyGoal: (json['dailyGoal'] as num?)?.toInt() ?? 500,
       );
 }
 

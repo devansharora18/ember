@@ -71,10 +71,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   bool _loading = true;
   bool _controlsVisible = true;
   Timer? _hideTimer;
-  Timer? _statsHeartbeat;
 
-  // Strategy: track seconds via a 1s heartbeat while the screen is open, and
-  // words via forward deltas on the reading position. See _trackWords.
+  // Strategy: the stats tracker owns a single 1s heartbeat while a session is
+  // active; we only report word deltas as the reading position advances.
   int _lastStatsPosition = 0;
   bool _statsInitialized = false;
 
@@ -113,9 +112,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _pageController.addListener(_onPageScrolling);
     _loadContent();
     ReadingStatsTracker.instance.begin();
-    _statsHeartbeat = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) ReadingStatsTracker.instance.addSeconds(1);
-    });
   }
 
   @override
@@ -123,8 +119,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _saveProgress();
     _rsvpOverlay?.remove();
     _rsvpOverlay = null;
-    _statsHeartbeat?.cancel();
-    _statsHeartbeat = null;
     ReadingStatsTracker.instance.end();
     _pageController.dispose();
     _hideTimer?.cancel();
