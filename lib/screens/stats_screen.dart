@@ -243,7 +243,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     );
   }
 
-  static const _goalOptions = [250, 500, 1000, 2000];
+  static const _goalOptions = [500, 1000, 2000, 4000];
 
   Widget _buildStat(IconData icon, String label, String value, double s) {
     return Container(

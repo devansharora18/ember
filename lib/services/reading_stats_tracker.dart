@@ -49,7 +49,7 @@ class ReadingStatsTracker {
   /// Sets the user's daily goal and persists it immediately.
   Future<void> setDailyGoal(int words) async {
     _ensureLoaded();
-    _streak.dailyGoal = words < 50 ? 50 : words;
+    _streak.dailyGoal = words < 100 ? 100 : words;
     await StatsStorage.saveStreak(_streak);
     _notify();
   }

@@ -47,7 +47,7 @@ class ReadingStreak {
     this.best = 0,
     this.lastDay,
     this.totalWords = 0,
-    this.dailyGoal = 500,
+    this.dailyGoal = 1000,
     this.booksFinished = 0,
     this.badges = const {},
   });
@@ -67,7 +67,7 @@ class ReadingStreak {
         best: (json['best'] as num?)?.toInt() ?? 0,
         lastDay: json['lastDay'] as String?,
         totalWords: (json['totalWords'] as num?)?.toInt() ?? 0,
-        dailyGoal: (json['dailyGoal'] as num?)?.toInt() ?? 500,
+        dailyGoal: (json['dailyGoal'] as num?)?.toInt() ?? 1000,
         booksFinished: (json['booksFinished'] as num?)?.toInt() ?? 0,
         badges: ((json['badges'] as List?) ?? []).map((e) => e.toString()).toSet(),
       );
