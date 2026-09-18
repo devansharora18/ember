@@ -36,6 +36,26 @@ class EmberApp extends StatelessWidget {
           foregroundColor: Colors.black,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         ),
+        // Remove the ripple/highlight "touch bubble" from every button.
+        splashFactory: NoSplash.splashFactory,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        iconButtonTheme: IconButtonThemeData(
+          style: ButtonStyle(overlayColor: WidgetStateProperty.all<Color?>(Colors.transparent)),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: ButtonStyle(overlayColor: WidgetStateProperty.all<Color?>(Colors.transparent)),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ButtonStyle(overlayColor: WidgetStateProperty.all<Color?>(Colors.transparent)),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: ButtonStyle(overlayColor: WidgetStateProperty.all<Color?>(Colors.transparent)),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: ButtonStyle(overlayColor: WidgetStateProperty.all<Color?>(Colors.transparent)),
+        ),
         textTheme: inter.copyWith(
           bodyLarge: inter.bodyLarge!.copyWith(color: Colors.white),
           bodySmall: inter.bodySmall!.copyWith(color: const Color(0xFF888888)),
