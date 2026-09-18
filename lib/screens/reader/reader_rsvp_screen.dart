@@ -43,7 +43,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
   final TextPainter _measurer = TextPainter(textDirection: TextDirection.ltr);
 
   static const _minWpm = 50;
-  static const _maxWpm = 400;
+  static const _maxWpm = 600;
   static const _autoHideDelay = Duration(seconds: 3);
   static const double _wordSpacing = 10.0;
 
