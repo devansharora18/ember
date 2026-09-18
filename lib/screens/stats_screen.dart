@@ -56,8 +56,9 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                   icon: Icon(Icons.arrow_back, color: Colors.white.withAlpha(128), size: 20),
                   splashRadius: 22,
                   visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.only(bottom: 22),
+                  padding: EdgeInsets.zero,
                 ),
+                const SizedBox(width: 8),
                 Padding(
                   padding: EdgeInsets.only(bottom: 10 * s),
                   child: Row(children: [
