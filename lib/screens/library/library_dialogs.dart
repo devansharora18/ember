@@ -35,12 +35,14 @@ class EditBookDialog extends StatelessWidget {
             children: [
               TextField(
                 controller: titleCtrl,
+                enableSuggestions: false, autocorrect: false,
                 style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
                 decoration: const InputDecoration(labelText: 'Title', labelStyle: TextStyle(color: Color(0xFF666666), fontSize: 12), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF333333))), focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white))),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: authorCtrl,
+                enableSuggestions: false, autocorrect: false,
                 style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
                 decoration: const InputDecoration(labelText: 'Author', labelStyle: TextStyle(color: Color(0xFF666666), fontSize: 12), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF333333))), focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white))),
               ),

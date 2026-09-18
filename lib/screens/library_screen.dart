@@ -167,6 +167,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       Expanded(child: TextField(
         controller: _searchController, autofocus: true,
+        enableSuggestions: false, autocorrect: false,
         style: GoogleFonts.inter(color: Colors.white, fontSize: 16 * s), cursorColor: Colors.white,
         decoration: InputDecoration(hintText: 'Search by title or author', hintStyle: GoogleFonts.inter(color: const Color(0xFF555555), fontSize: 14 * s), border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8 * s)),
         onChanged: (v) => ref.read(searchQueryProvider.notifier).set(v),

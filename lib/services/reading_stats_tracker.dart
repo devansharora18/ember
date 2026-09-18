@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../models/badges.dart';
 import '../models/reading_stats.dart';
 import 'stats_storage.dart';
 
@@ -85,6 +86,7 @@ class ReadingStatsTracker {
     _streak.totalWords += words;
     _dirty = true;
     _advanceStreak();
+    _evaluateBadges();
     _notify();
   }
 
@@ -95,6 +97,34 @@ class ReadingStatsTracker {
     today.seconds += seconds;
     _dirty = true;
     _notify();
+  }
+
+  /// Record a finished book.
+  void completeBook() {
+    _ensureLoaded();
+    _streak.booksFinished++;
+    today.booksFinished++;
+    _dirty = true;
+    _evaluateBadges();
+    _notify();
+  }
+
+  /// Earns any badges whose conditions are now met.
+  void _evaluateBadges() {
+    final ctx = BadgeContext(
+      currentStreak: _streak.current,
+      bestStreak: _streak.best,
+      totalWords: _streak.totalWords,
+      daysRead: _daily.values.where((d) => d.words > 0).length,
+    );
+    var changed = false;
+    for (final b in badges) {
+      if (b.earned(ctx) && !_streak.badges.contains(b.id)) {
+        _streak.badges = {..._streak.badges, b.id};
+        changed = true;
+      }
+    }
+    if (changed) _dirty = true;
   }
 
   void _ensureLoaded() {
@@ -111,6 +141,7 @@ class ReadingStatsTracker {
     // first snapshot) — that empty entry must NOT overwrite real stored data.
     _daily.addAll(storedDaily);
     _streak = storedStreak;
+    _evaluateBadges();
     _notify();
   }
 

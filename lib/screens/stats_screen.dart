@@ -1,6 +1,13 @@
+import 'dart:io' show File;
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import '../models/badges.dart';
 import '../models/reading_stats.dart';
 import '../providers/reading_stats_provider.dart';
 import '../services/reading_stats_tracker.dart';
@@ -13,11 +20,16 @@ const _cardBorder = Color(0xFF1E1E1E);
 const _textDim = Color(0xFF888888);
 const _textFaint = Color(0xFF555555);
 
-class StatsScreen extends ConsumerWidget {
+class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends ConsumerState<StatsScreen> {
+  @override
+  Widget build(BuildContext context) {
     final snap = ref.watch(readingStatsProvider);
     final s = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.5);
     final today = snap.today;
@@ -85,9 +97,15 @@ class StatsScreen extends ConsumerWidget {
             Expanded(child: _buildStat(Icons.calendar_today, 'Days read', '$daysRead', s)),
           ]),
           SizedBox(height: 24 * s),
+          _sectionLabel('Badges', s),
+          SizedBox(height: 10 * s),
+          _buildBadges(streak.badges, s),
+          SizedBox(height: 24 * s),
           _sectionLabel('Activity', s),
           SizedBox(height: 12 * s),
-          _buildHeatmap(ref, s),
+          _buildHeatmap(s),
+          SizedBox(height: 24 * s),
+          _buildShareButton(streak, s),
         ],
       ),
     );
@@ -247,7 +265,116 @@ class StatsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeatmap(WidgetRef ref, double s) {
+  Widget _buildBadges(Set<String> earned, double s) {
+    return Container(
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: _cardBg,
+        border: Border.all(color: _cardBorder),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text('${earned.length} / ${badges.length} earned', style: GoogleFonts.inter(color: _textDim, fontSize: 12 * s)),
+          const Spacer(),
+          Icon(Icons.workspace_premium, size: 16 * s, color: _orange),
+        ]),
+        SizedBox(height: 14 * s),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 12 * s,
+          crossAxisSpacing: 12 * s,
+          childAspectRatio: 1.1,
+          children: [
+            for (final b in badges) _buildBadgeTile(b, earned.contains(b.id), s),
+          ],
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildBadgeTile(BadgeDef badge, bool isEarned, double s) {
+    final dim = !isEarned;
+    return Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+      Container(
+        width: 44 * s,
+        height: 44 * s,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isEarned ? const Color(0xFF1F140C) : const Color(0xFF121212),
+          border: Border.all(color: isEarned ? _orangeSoft : _cardBorder),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          badge.icon,
+          size: 22 * s,
+          color: isEarned ? _orange : _textFaint,
+        ),
+      ),
+      SizedBox(height: 6 * s),
+      Text(badge.name, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.inter(color: isEarned ? Colors.white : _textFaint, fontSize: 10 * s, fontWeight: FontWeight.w600)),
+      SizedBox(height: 2 * s),
+      Text(badge.description, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.inter(color: dim ? const Color(0xFF333333) : _textDim, fontSize: 9 * s, height: 1.2)),
+    ]);
+  }
+
+  Widget _buildShareButton(ReadingStreak streak, double s) {
+    return Center(
+      child: TextButton.icon(
+        onPressed: () => _shareStreak(streak),
+        icon: Icon(Icons.ios_share, size: 16 * s, color: _orange),
+        label: Text('Share your streak', style: GoogleFonts.inter(color: _orange, fontSize: 13 * s, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  Future<void> _shareStreak(ReadingStreak streak) async {
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+    final key = GlobalKey();
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => Positioned(
+        left: -800,
+        top: 0,
+        child: RepaintBoundary(
+          key: key,
+          child: ShareStreakCard(streak: streak, recentDays: ReadingStatsTracker.instance.daily.values.toList()),
+        ),
+      ),
+    );
+    overlay.insert(entry);
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      final boundary = key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final bytes = byteData?.buffer.asUint8List();
+      if (bytes == null) return;
+      XFile file;
+      if (kIsWeb) {
+        file = XFile.fromData(bytes, mimeType: 'image/png', name: 'ember_streak.png');
+      } else {
+        final dir = await getTemporaryDirectory();
+        final f = File('${dir.path}/ember_streak.png');
+        await f.writeAsBytes(bytes);
+        file = XFile(f.path);
+      }
+      final text = streak.current > 0
+          ? "I've read ${streak.current} day${streak.current == 1 ? '' : 's'} in a row on Ember. ${streak.totalWords} words so far."
+          : 'Reading ${streak.totalWords} words on Ember so far.';
+      await SharePlus.instance.share(ShareParams(files: [file], text: text));
+    } catch (_) {
+    } finally {
+      entry.remove();
+    }
+  }
+
+  Widget _buildHeatmap(double s) {
     final snap = ref.watch(readingStatsProvider);
     final daily = snap.daily;
     final goal = snap.streak.dailyGoal;
@@ -441,5 +568,203 @@ class StatsScreen extends ConsumerWidget {
     final m = (seconds % 3600) ~/ 60;
     if (h > 0) return m > 0 ? '${h}h ${m}m' : '${h}h';
     return '${m}m';
+  }
+}
+
+/// A stylized, self-contained card rendered offscreen and captured to PNG for
+/// sharing. Fixed dimensions so capture is predictable.
+class ShareStreakCard extends StatelessWidget {
+  final ReadingStreak streak;
+  final List<DailyReading> recentDays;
+
+  const ShareStreakCard({super.key, required this.streak, this.recentDays = const []});
+
+  @override
+  Widget build(BuildContext context) {
+    const width = 400.0;
+    const height = 520.0;
+    // The card is captured from an off-screen overlay entry that has no
+    // Material/DefaultTextStyle ancestor, so Text would inherit Flutter's
+    // yellow double-underline fallback. Reset it explicitly.
+    return DefaultTextStyle(
+      style: const TextStyle(
+        decoration: TextDecoration.none,
+        color: Colors.white,
+        fontSize: 14,
+      ),
+      child: Container(
+        width: width,
+        height: height,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0A0A0A), Color(0xFF120904)],
+          ),
+        ),
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            const Spacer(),
+            Center(child: _buildStreakCenter()),
+            const Spacer(),
+            _buildStatsRow(),
+            const SizedBox(height: 20),
+          _buildWeekStrip(),
+          const Spacer(),
+          _buildFooter(),
+        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(children: [
+      Container(
+        width: 36,
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1F140C),
+          border: Border.all(color: _orangeSoft),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(Icons.auto_stories, color: _orange, size: 20),
+      ),
+      const SizedBox(width: 12),
+      Text('EMBER', style: GoogleFonts.inter(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 4)),
+      const Spacer(),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1F140C),
+          border: Border.all(color: _orangeSoft),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.local_fire_department, color: _orange, size: 14),
+          const SizedBox(width: 4),
+          Text('${streak.current}', style: GoogleFonts.inter(color: _orange, fontSize: 13, fontWeight: FontWeight.w800)),
+        ]),
+      ),
+    ]);
+  }
+
+  Widget _buildStreakCenter() {
+    return Column(children: [
+      // Glowing flame ring
+      Container(
+        width: 132,
+        height: 132,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const RadialGradient(
+            center: Alignment.center,
+            radius: 0.8,
+            colors: [Color(0xFF3A2110), Color(0xFF1A1008)],
+          ),
+          border: Border.all(color: _orangeSoft, width: 1.5),
+          boxShadow: const [
+            BoxShadow(color: Color(0x66F97316), blurRadius: 40, spreadRadius: 4),
+          ],
+        ),
+        child: Icon(Icons.local_fire_department, color: _orange, size: 56),
+      ),
+      const SizedBox(height: 18),
+      Text('${streak.current}', style: GoogleFonts.inter(color: Colors.white, fontSize: 76, fontWeight: FontWeight.w800, height: 1)),
+      const SizedBox(height: 6),
+      Text('DAY${streak.current == 1 ? '' : 'S'} IN A ROW', style: GoogleFonts.inter(color: _textDim, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 3)),
+    ]);
+  }
+
+  Widget _buildStatsRow() {
+    return Row(children: [
+      _buildStatChip('WORDS', _formatShareCount(streak.totalWords)),
+      const SizedBox(width: 10),
+      _buildStatChip('BEST', '${streak.best}d'),
+      const SizedBox(width: 10),
+      _buildStatChip('GOAL', '${streak.dailyGoal}'),
+    ]);
+  }
+
+  Widget _buildStatChip(String label, String value) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D0D0D),
+          border: Border.all(color: _cardBorder),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(children: [
+          Text(value, style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 3),
+          Text(label, style: GoogleFonts.inter(color: _textFaint, fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildWeekStrip() {
+    // Last 7 days (including today), most recent on the right.
+    final days = <DateTime>[];
+    final now = DateTime.now();
+    for (var i = 6; i >= 0; i--) {
+      days.add(now.subtract(Duration(days: i)));
+    }
+    final dayMap = {for (final d in recentDays) d.dateKey: d};
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (final d in days) ...[
+          Builder(builder: (_) {
+            final read = (dayMap[formatDateKey(d)]?.words ?? 0) > 0;
+            return Container(
+              width: 32,
+              height: 40,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: read ? _orange : const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: read ? _orange : _cardBorder,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    read ? Icons.check : Icons.remove,
+                    size: 14,
+                    color: read ? Colors.black : _textFaint,
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFooter() {
+    return Row(children: [
+      Text('Keep the flame alive', style: GoogleFonts.inter(color: _textDim, fontSize: 13, fontWeight: FontWeight.w500)),
+      const Spacer(),
+      Icon(Icons.local_fire_department, color: _orange, size: 16),
+      const SizedBox(width: 5),
+      Text('ember.devansharora.in', style: GoogleFonts.inter(color: _orange, fontSize: 12, fontWeight: FontWeight.w700)),
+    ]);
+  }
+
+  static String _formatShareCount(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return '$n';
   }
 }

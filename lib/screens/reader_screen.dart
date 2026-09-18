@@ -267,6 +267,21 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _position = _pageStarts[pg];
     _isBookmarked = _bookmarks.contains(pg);
     BookStorage.savePosition(widget.book.filePath, _position);
+    _maybeCompleteBook();
+  }
+
+  bool _bookCompletionReported = false;
+
+  // Counts the book as finished once the reader reaches the last page.
+  void _maybeCompleteBook() {
+    if (_bookCompletionReported) return;
+    if (_totalChars <= 0) return;
+    final onLastPage = _currentPage >= _pageStarts.length - 1;
+    final nearEnd = _position >= _totalChars - 50;
+    if (onLastPage && nearEnd) {
+      _bookCompletionReported = true;
+      ReadingStatsTracker.instance.completeBook();
+    }
   }
 
   // Records words read for forward reading movement. Page changes include

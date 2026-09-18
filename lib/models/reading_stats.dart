@@ -39,6 +39,8 @@ class ReadingStreak {
   String? lastDay; // last day that counted toward the streak (yyyy-MM-dd)
   int totalWords;
   int dailyGoal; // target words per day, user-configurable
+  int booksFinished;
+  Set<String> badges; // earned badge ids
 
   ReadingStreak({
     this.current = 0,
@@ -46,6 +48,8 @@ class ReadingStreak {
     this.lastDay,
     this.totalWords = 0,
     this.dailyGoal = 500,
+    this.booksFinished = 0,
+    this.badges = const {},
   });
 
   Map<String, dynamic> toJson() => {
@@ -54,6 +58,8 @@ class ReadingStreak {
         if (lastDay != null) 'lastDay': lastDay,
         'totalWords': totalWords,
         'dailyGoal': dailyGoal,
+        'booksFinished': booksFinished,
+        'badges': badges.toList(),
       };
 
   factory ReadingStreak.fromJson(Map<String, dynamic> json) => ReadingStreak(
@@ -62,6 +68,8 @@ class ReadingStreak {
         lastDay: json['lastDay'] as String?,
         totalWords: (json['totalWords'] as num?)?.toInt() ?? 0,
         dailyGoal: (json['dailyGoal'] as num?)?.toInt() ?? 500,
+        booksFinished: (json['booksFinished'] as num?)?.toInt() ?? 0,
+        badges: ((json['badges'] as List?) ?? []).map((e) => e.toString()).toSet(),
       );
 }
 

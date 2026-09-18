@@ -190,6 +190,7 @@ class SearchOverlay extends StatelessWidget {
                   child: TextField(
                     controller: controller,
                     autofocus: true,
+                    enableSuggestions: false, autocorrect: false,
                     onChanged: onSearch,
                     style: GoogleFonts.inter(color: fg, fontSize: 14),
                     cursorColor: accent,
