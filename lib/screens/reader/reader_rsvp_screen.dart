@@ -28,6 +28,7 @@ class RsvpScreen extends StatefulWidget {
 
 class _RsvpScreenState extends State<RsvpScreen> {
   int _index = 0;
+  int _furthestIndex = 0;
   int _wpm = 180;
   bool _playing = false;
   Timer? _timer;
@@ -53,6 +54,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
     _words = _tokenize(widget.fullText);
     _measuredStyle = GoogleFonts.getFont(widget.fontFamily, fontSize: 32, fontWeight: FontWeight.w400);
     _index = _findWordIndex(widget.startPosition);
+    _furthestIndex = _index;
     _isFirstWordOfSentence = _index == 0 || _isWordSentenceEnd(_words[_index - 1].text);
     _loadWpm();
     _scheduleHide();
@@ -137,6 +139,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
               return;
             }
           });
+          _reportProgress();
           _tick();
         });
         return;
@@ -151,6 +154,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
           if (isSentenceEnd) { _sentencesSincePause++; }
         }
       });
+      _reportProgress();
       if (widget.pauseAfterWords > 0 && _sentencesSincePause >= widget.pauseAfterWords && !_holding) {
         setState(() { _playing = false; _sentencesSincePause = 0; _isFirstWordOfSentence = true; });
         return;
@@ -210,6 +214,16 @@ class _RsvpScreenState extends State<RsvpScreen> {
     return count < 1 ? 1 : count;
   }
 
+  // Reports words read past the furthest word reached this session. Using the
+  // furthest index means scrubbing backwards and re-reading doesn't inflate
+  // stats, mirroring how the normal reader only counts forward movement.
+  void _reportProgress() {
+    if (_index > _furthestIndex) {
+      ReadingStatsTracker.instance.addWords(_index - _furthestIndex);
+      _furthestIndex = _index;
+    }
+  }
+
   void _skip(int count) {
     _timer?.cancel();
     _scheduleHide();
@@ -219,6 +233,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
       _index = (_index + count).clamp(0, _words.length - 1);
       _isFirstWordOfSentence = _index == 0 || _isWordSentenceEnd(_words[_index - 1].text);
     });
+    _reportProgress();
     if (wasPlaying) {
       setState(() => _playing = true);
       _tick();
@@ -274,6 +289,7 @@ class _RsvpScreenState extends State<RsvpScreen> {
         final wordShift = (-d.primaryDelta! / 40).round();
         if (wordShift != 0) {
           _index = (_index + wordShift).clamp(0, _words.length - 1);
+          _reportProgress();
           setState(() {});
         }
       },

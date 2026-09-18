@@ -591,6 +591,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     if (np != null && mounted) {
       _position = np.clamp(0, _totalChars);
       _currentPage = _layout.findPageForPosition(_position, _pageStarts);
+      // RSVP already counted the words it advanced through, so move the stats
+      // baseline forward to the furthest point reached before the page jump
+      // fires, otherwise the jump would double-count.
+      if (_statsInitialized && _position > _lastStatsPosition) {
+        _lastStatsPosition = _position;
+      }
       _pageController.jumpToPage(_currentPage + _coverCount);
       BookStorage.savePosition(widget.book.filePath, _position);
       _saveProgress();
