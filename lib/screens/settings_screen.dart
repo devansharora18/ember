@@ -9,6 +9,7 @@ import '../providers/book_list_provider.dart';
 import '../services/book_storage.dart';
 import '../services/data_export.dart';
 import '../services/file_reader.dart';
+import '../services/reading_stats_tracker.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -80,6 +81,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       if (importResult.success) {
         ref.read(bookListProvider.notifier).replaceAll(importResult.bookList, importResult.columns);
+        await ReadingStatsTracker.instance.reload();
         setState(() => _status = 'Imported ${importResult.books} books');
       } else {
         setState(() => _status = 'Invalid backup file');
@@ -186,7 +188,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildButton(
               icon: Icons.upload_file,
               label: 'Export library',
-              subtitle: 'Save all books, progress & settings to a file',
+              subtitle: 'Save all books, stats, progress & settings to a file',
               onTap: _export,
               s: s,
             ),
@@ -194,7 +196,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildButton(
               icon: Icons.download,
               label: 'Import library',
-              subtitle: 'Restore books, progress & settings from a file',
+              subtitle: 'Restore books, stats, progress & settings from a file',
               onTap: _import,
               s: s,
             ),

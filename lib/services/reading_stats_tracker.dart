@@ -145,6 +145,20 @@ class ReadingStatsTracker {
     _notify();
   }
 
+  /// Replaces the in-memory stats with what is currently persisted. Used after
+  /// importing a backup so the UI reflects the restored data without a restart.
+  Future<void> reload() async {
+    final storedDaily = await StatsStorage.loadDaily();
+    final storedStreak = await StatsStorage.loadStreak();
+    _daily
+      ..clear()
+      ..addAll(storedDaily);
+    _streak = storedStreak;
+    _loaded = true;
+    _evaluateBadges();
+    _notify();
+  }
+
   /// Advances the streak on the first time words are added for a day.
   void _advanceStreak() {
     final todayKey = formatDateKey(DateTime.now());

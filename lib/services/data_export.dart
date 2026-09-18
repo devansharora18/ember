@@ -3,7 +3,9 @@ import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'book_storage.dart';
 import 'file_reader.dart';
+import 'stats_storage.dart';
 import '../models/book.dart';
+import '../models/reading_stats.dart';
 
 class DataExport {
   static Future<({Uint8List bytes, int bookCount})> exportAll() async {
@@ -57,8 +59,11 @@ class DataExport {
     final darkMode = await BookStorage.loadDarkMode('') ?? true;
     final rsvpWpm = await BookStorage.loadRsvpWpm() ?? 300;
 
+    final daily = await StatsStorage.loadDaily();
+    final streak = await StatsStorage.loadStreak();
+
     final metaJson = jsonEncode({
-      'version': 2,
+      'version': 3,
       'exportedAt': DateTime.now().toIso8601String(),
       'columns': data.columns,
       'settings': {
@@ -66,6 +71,10 @@ class DataExport {
         'fontFamily': fontFamily,
         'darkMode': darkMode,
         'rsvpWpm': rsvpWpm,
+      },
+      'stats': {
+        'daily': {for (final e in daily.entries) e.key: e.value.toJson()},
+        'streak': streak.toJson(),
       },
       'books': booksMeta,
     });
@@ -143,6 +152,22 @@ class DataExport {
       }
       if (settings['rsvpWpm'] != null) {
         BookStorage.saveRsvpWpm(settings['rsvpWpm'] as int);
+      }
+
+      final stats = data['stats'] as Map<String, dynamic>?;
+      if (stats != null) {
+        final dailyJson = stats['daily'] as Map<String, dynamic>?;
+        if (dailyJson != null) {
+          final daily = <String, DailyReading>{
+            for (final e in dailyJson.entries)
+              e.key: DailyReading.fromJson(e.value as Map<String, dynamic>),
+          };
+          await StatsStorage.saveDaily(daily);
+        }
+        final streakJson = stats['streak'] as Map<String, dynamic>?;
+        if (streakJson != null) {
+          await StatsStorage.saveStreak(ReadingStreak.fromJson(streakJson));
+        }
       }
 
       for (var i = 0; i < books.length && i < jsonBooks.length; i++) {
