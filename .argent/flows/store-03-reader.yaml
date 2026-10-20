@@ -1,0 +1,88 @@
+# Ember — reader tile.
+# Raw: the page reader at the 24 pt maximum font, in prose.
+#
+# Precondition: the four .epub files from goldie/setup-device.sh are in
+# /sdcard/Download on the booted Pixel 9 Pro AVD. goldie clears the app's data
+# before this flow, so the import is part of the flow.
+#
+# The app bar icons are unlabelled Flutter widgets with no accessibility tree
+# on this screen, and the reader auto-hides its controls after 3 seconds. A
+# `tap` directive here pays a settle window for the first coordinate gesture,
+# which outlasts the auto-hide and makes the next toolbar tap miss — so every
+# control interaction uses the raw `gesture-tap` tool, which dispatches
+# immediately.
+
+steps:
+  - launch: in.devansharora.ember
+  - await: { visible: { text: Library }, timeout: 20000 }
+  - await: { idle: true }
+
+  # ── import the four books through the system file picker ──
+  - echo: Tap the + FAB (unlabelled) to open the system picker.
+  - tap: { x: 0.897, y: 0.929 }
+  - await: { visible: { text: Show roots } }
+  - echo: Show roots, then Downloads.
+  - tap: { x: 0.066, y: 0.080 }
+  - await: { visible: { text: Downloads } }
+  - tap: { x: 0.234, y: 0.261 }
+  - await: { visible: { text: 'dune.epub' } }
+  - echo: Open the overflow menu.
+  - tap: { x: 0.944, y: 0.080 }
+  - wait: 1200
+  - echo: Select all (popup item, coordinate only).
+  - tap: { x: 0.761, y: 0.180 }
+  - wait: 1200
+  - echo: Confirm the selection.
+  - wait: 1200
+  - tap: { x: 0.813, y: 0.080 }
+  # See store-02-rsvp for why the picker taps are coordinates and why the
+  # import is not verified with an await.
+  - wait: 25000
+  - await: { idle: true }
+
+  # ── open the first book ──
+  # Top-left card at two columns. Cards are ordered by import order, which is
+  # the picker's own order, so this is Alice's Adventures in Wonderland.
+  - echo: Open the top-left card.
+  - tap: { x: 0.260, y: 0.329 }
+  # The EPUB parses on a worker before the reader paints.
+  - wait: 14000
+  # Let the controls finish auto-hiding so the next tap shows them rather than
+  # toggling them off.
+  - wait: 4000
+
+  # ── largest reader font ──
+  - echo: Show the controls.
+  - tool: gesture-tap
+    args: { x: 0.500, y: 0.500 }
+  # _setFontSize is +1 per tap, clamped to _maxFontSize = 24 from a default of
+  # 16. Each tap resets the auto-hide, so the run stays visible.
+  - echo: Tap A+ eight times to reach the 24 pt maximum.
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+
+  # ── page past the front matter into the prose ──
+  # The reader opens on the cover; a page turn is a leftward flick.
+  - echo: Page forward out of the front matter into the chapter text.
+  - swipe: left
+  - swipe: left
+  - swipe: left
+  - swipe: left
+  - swipe: left
+  - swipe: left
+  - swipe: left
+  - await: { idle: true }

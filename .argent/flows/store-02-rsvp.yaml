@@ -1,0 +1,132 @@
+# Ember — RSVP speed reading tile.
+# Raw: the RSVP screen mid-play, one word with its focal letter.
+#
+# Precondition: the four .epub files from goldie/setup-device.sh are in
+# /sdcard/Download on the booted Pixel 9 Pro AVD. goldie clears the app's data
+# before this flow, so the import is part of the flow.
+#
+# Three things make this the most delicate flow in the set:
+#   1. The reader screen serves no accessibility tree, so its app bar icons and
+#      its overflow menu can only be reached by coordinate.
+#   2. The reader auto-hides its controls after 3 seconds. A `tap` directive on
+#      this screen pays a settle window for the first coordinate gesture, which
+#      outlasts the auto-hide and makes the following toolbar tap miss. Every
+#      control interaction therefore uses the raw `gesture-tap` tool, which
+#      dispatches immediately.
+#   3. The start-word picker is completed by a DOUBLE tap, sent as one
+#      gesture-tap with clickCount 2. Two separate taps are not guaranteed to
+#      land inside the OS double-tap window, and a single tap is swallowed by
+#      the full-screen controls toggle layered over the page text — which then
+#      falls through to the dictionary instead.
+
+steps:
+  - launch: in.devansharora.ember
+  - await: { visible: { text: Library }, timeout: 20000 }
+  - await: { idle: true }
+
+  # ── import the four books through the system file picker ──
+  - echo: Tap the + FAB (unlabelled) to open the system picker.
+  - tap: { x: 0.897, y: 0.929 }
+  - await: { visible: { text: Show roots } }
+  - echo: Show roots, then Downloads.
+  - tap: { x: 0.066, y: 0.080 }
+  - await: { visible: { text: Downloads } }
+  - tap: { x: 0.234, y: 0.261 }
+  - await: { visible: { text: 'dune.epub' } }
+  # Take the whole folder at once. Matching tiles one by one does not survive
+  # this picker: selecting a tile ellipsises the long filenames so their
+  # accessibility text stops equalling the file name, and the grid order is not
+  # stable between runs. The toolbar buttons are content-desc strings that
+  # collide with each other and the overflow popup is not in the runner's tree,
+  # so every tap below is a coordinate.
+  - echo: Open the overflow menu.
+  - tap: { x: 0.944, y: 0.080 }
+  - wait: 1200
+  - echo: Select all (popup item, coordinate only).
+  - tap: { x: 0.761, y: 0.180 }
+  - wait: 1200
+  - echo: Confirm the selection.
+  - wait: 1200
+  - tap: { x: 0.813, y: 0.080 }
+  # Four EPUBs parse into covers and metadata; this is the slow step. Not
+  # verified with await visible — the runner's projection does not surface
+  # library book cards — so the raw is checked by eye.
+  - wait: 25000
+  - await: { idle: true }
+
+  # ── open the first book and reach prose ──
+  - echo: Open the top-left card.
+  - tap: { x: 0.260, y: 0.329 }
+  - wait: 14000
+  # Let the controls finish auto-hiding so the next tap shows them rather than
+  # toggling them off.
+  - wait: 4000
+  - echo: Show the controls.
+  - tool: gesture-tap
+    args: { x: 0.500, y: 0.500 }
+  # _setFontSize is +1 per tap, clamped to _maxFontSize = 24 from a default of
+  # 16. Each tap resets the auto-hide, so the run stays visible.
+  - echo: Tap A+ eight times to reach the 24 pt maximum.
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - tool: gesture-tap
+    args: { x: 0.598, y: 0.077 }
+  - echo: Page forward out of the front matter into the chapter text.
+  - swipe: left
+  - swipe: left
+  - swipe: left
+  - swipe: left
+  - swipe: left
+  - swipe: left
+  - swipe: left
+
+  # ── open RSVP ──
+  - wait: 4000
+  - echo: Show the controls.
+  - tool: gesture-tap
+    args: { x: 0.500, y: 0.500 }
+  # The app bar sits behind IgnorePointer while the controls are hidden; give
+  # the setState that reveals it a beat to land before tapping a button in it.
+  - wait: 700
+  - echo: Open the reader's overflow menu (unlabelled app bar icon).
+  - tool: gesture-tap
+    args: { x: 0.931, y: 0.077 }
+  - wait: 1500
+  - echo: Choose RSVP speed read (popup item, coordinate only).
+  - tool: gesture-tap
+    args: { x: 0.741, y: 0.128 }
+  - wait: 2000
+  # The picker asks which word to start from.
+  - echo: Double tap a word to set the RSVP start point.
+  - tool: gesture-tap
+    args: { x: 0.313, y: 0.315, clickCount: 2 }
+  - wait: 2000
+  # Auto-pause defaults to "Every 1 sentences", which would freeze the screen on
+  # the paused overlay. Drag the slider fully left for "No auto-pause".
+  - echo: Drag the auto-pause slider to Off so RSVP keeps running.
+  - swipe:
+      from: { x: 0.266, y: 0.506 }
+      to: { x: 0.090, y: 0.506 }
+      duration: 500
+  - wait: 800
+  - echo: Start.
+  - tap: { x: 0.770, y: 0.588 }
+  - wait: 1500
+  # RSVP opens paused ("hold to read"). Resume; with auto-pause off it stays
+  # playing, so the capture lands on a live word rather than the paused overlay.
+  - echo: Resume playback, then let the controls auto-hide before the capture.
+  - tap: { x: 0.527, y: 0.539 }
+  - wait: 3500
+  - await: { idle: true }

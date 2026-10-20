@@ -1,0 +1,56 @@
+# Ember — library tile.
+# Left: Library with four imported EPUBs at two columns (the app's largest covers).
+#
+# Precondition: the four .epub files from goldie/setup-device.sh are in
+# /sdcard/Download on the booted Pixel 9 Pro AVD. goldie clears the app's data
+# before this flow, so the import is part of the flow.
+
+steps:
+  - launch: in.devansharora.ember
+  - await: { visible: { text: Library }, timeout: 20000 }
+  - await: { idle: true }
+
+  # ── import the four books through the system file picker ──
+  # The + button is an unlabelled Flutter FAB, so it has no selector; the
+  # point comes from the library screen at 1280x2856.
+  - echo: Tap the + FAB (unlabelled) to open the system picker.
+  - tap: { x: 0.897, y: 0.929 }
+  - await: { visible: { text: Show roots } }
+  - echo: Show roots, then Downloads.
+  - tap: { x: 0.066, y: 0.080 }
+  - await: { visible: { text: Downloads } }
+  - tap: { x: 0.234, y: 0.261 }
+  - await: { visible: { text: 'dune.epub' } }
+  # Take the whole folder at once. Matching tiles one by one does not survive
+  # this picker: selecting a tile ellipsises the long filenames so their
+  # accessibility text stops equalling the file name, and the grid order is
+  # not stable between runs. Every tap below is a coordinate because the
+  # picker's toolbar buttons are content-desc strings that collide with each
+  # other and the overflow popup is not in the runner's tree at all.
+  - echo: Open the overflow menu.
+  - tap: { x: 0.944, y: 0.080 }
+  - wait: 1200
+  - echo: Select all (popup item, coordinate only).
+  - tap: { x: 0.761, y: 0.180 }
+  - wait: 1200
+  - wait: 1200
+  # The picker's Select button is present in uiautomator's tree but the
+  # runner's projection does not surface it, so confirm by position and let
+  # the library itself prove the import landed.
+  - echo: Confirm the selection.
+  - wait: 1200
+  - tap: { x: 0.813, y: 0.080 }
+  # Four EPUBs parse into covers and metadata; this is the slow step.
+  # Not verified with await visible: the runner's projection does not surface
+  # library book cards, so a positive check here never matches. The raws are
+  # checked by eye instead.
+  - wait: 25000
+  - await: { idle: true }
+
+  # ── largest covers ──
+  # The toggle cycles _columnOptions = [3, 4, 2], so two taps lands on 2.
+  - echo: Cycle the column toggle 3 -> 4 -> 2 for the largest covers.
+  - tap: { x: 0.618, y: 0.103 }
+  - tap: { x: 0.618, y: 0.103 }
+  - wait: 1500
+  - await: { idle: true }
