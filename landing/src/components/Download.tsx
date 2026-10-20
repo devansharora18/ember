@@ -24,7 +24,7 @@ export default function Download() {
               <br />
               one <span className="italic text-ember">book</span>.
             </h2>
-            <p className="mt-5 max-w-[46ch] text-[0.9375rem] leading-relaxed text-muted">
+            <p className="mt-5 max-w-[46ch] text-base leading-relaxed text-muted">
               Free on Android. If you would rather not use Google Play, the APK is here to download,
               and the web app runs in a browser tab.
             </p>

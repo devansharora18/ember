@@ -14,15 +14,15 @@ const features = [
     body: '50 to 600 words per minute with the focal letter held still. Punctuation timing, breath pauses, and an auto-pause every few sentences.',
   },
   {
-    title: 'Bookmarks & highlights',
+    title: 'Bookmarks',
     body: 'Mark passages as you read. They stay on your device, attached to the place in the book where you left them.',
   },
   {
-    title: 'Stats & streaks',
+    title: 'Stats',
     body: 'Words read, daily goal, current and best streak, badges for the long runs, and per-book progress.',
   },
   {
-    title: 'Export & restore',
+    title: 'Export',
     body: 'One file holds every book, your progress, stats and settings. Restore it on a new phone and pick up mid-sentence.',
   },
 ]
@@ -40,7 +40,7 @@ export default function FeatureIndex() {
               not a feed.
             </h2>
           </div>
-          <p className="mt-5 max-w-[46ch] text-[0.9375rem] leading-relaxed text-muted md:mb-2 md:mt-0">
+          <p className="mt-5 max-w-[46ch] text-base leading-relaxed text-muted md:mb-2 md:mt-0">
             No store, no recommendations, no account. Library, reader, speed reading and stats — each
             does its job and returns you to the page.
           </p>
@@ -58,7 +58,7 @@ export default function FeatureIndex() {
               <h3 className="font-display text-[1.6rem] leading-tight tracking-[-0.01em] transition-transform duration-200 group-hover:translate-x-1 md:text-[1.75rem]">
                 {feature.title}
               </h3>
-              <p className="max-w-[58ch] text-[0.9375rem] leading-relaxed text-muted">
+              <p className="max-w-[58ch] text-base leading-relaxed text-muted">
                 {feature.body}
               </p>
             </li>

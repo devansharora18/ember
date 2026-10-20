@@ -1,33 +1,33 @@
 @import "tailwindcss";
 
-/* Tokens: warm paper by day, warm ink by night. One accent, held throughout. */
+/* Tokens: aged paper by day, espresso by night. One oxblood accent throughout. */
 :root {
   color-scheme: light;
-  --paper: #f6f1e7;
-  --paper-deep: #ede5d5;
-  --panel: #fbf7ee;
-  --ink: #17130f;
-  --muted: #6a6055;
-  --rule: #d7cdbb;
-  --ember: #b23a12;
+  --paper: #eaddc3;
+  --paper-deep: #e1d2b4;
+  --panel: #f2e7d2;
+  --ink: #2a2018;
+  --muted: #5f4e3c;
+  --rule: #c9b696;
+  --ember: #8e2f1c;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --paper: #141210;
-    --paper-deep: #1c1916;
-    --panel: #1a1714;
-    --ink: #efe8dc;
-    --muted: #a79c8c;
-    --rule: #322c25;
-    --ember: #fb923c;
+    --paper: #1a1410;
+    --paper-deep: #221a14;
+    --panel: #201812;
+    --ink: #f2e7d3;
+    --muted: #b3a28a;
+    --rule: #3a2d22;
+    --ember: #e0895c;
   }
 }
 
 @theme inline {
-  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
-  --font-sans: "Instrument Sans", system-ui, sans-serif;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body: "Lora", "Iowan Old Style", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --color-paper: var(--paper);
@@ -49,7 +49,7 @@
   body {
     background-color: var(--paper);
     color: var(--ink);
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -95,6 +95,10 @@
     pointer-events: none;
     opacity: 0.035;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .font-display {
+    font-weight: 500;
   }
 
   .meta {

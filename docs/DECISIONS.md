@@ -1,7 +1,12 @@
 # Decisions
 
-- **Editorial paper direction.** The app is a reader; a warm paper page with book typography fits
-  better than another dark orange SaaS landing, and it makes the black phone screenshots stand out.
+- **Sepia Press theme.** Chosen after previewing four directions (warm dark, cool dark, cobalt,
+  sepia). Aged parchment, brown-black ink, one oxblood accent, Fraunces display over Lora prose.
+  It reads as a book without becoming a costume; the black phone plates still carry the product.
+- **Serif body copy is intentional.** Lora at 16px replaces the previous sans to make the page feel
+  printed. Small labels and numbers stay in JetBrains Mono for legibility and contrast.
+- **Dark mode is espresso, not a second look.** The remap keeps the same warm identity at night:
+  `#1A1410` background, cream text, terracotta accent, all above AA.
 - **The live RSVP demo is the hero.** It is the product's differentiator, so it runs on real timing
   instead of being a scroll animation. Words, punctuation pauses and WPM come from the app's rules
   (base `60000 / wpm`, longer pauses after punctuation).

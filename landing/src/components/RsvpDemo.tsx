@@ -124,7 +124,7 @@ export default function RsvpDemo() {
         </span>
       </div>
 
-      <figcaption className="border-t border-rule/80 px-4 py-3 text-[0.75rem] leading-relaxed text-muted md:px-5">
+      <figcaption className="border-t border-rule/80 px-4 py-3 text-[0.8125rem] leading-relaxed text-muted md:px-5">
         The ember letter is the optimal recognition point. Every word is pinned to the same column, so
         your eye stops jumping across the line.
       </figcaption>

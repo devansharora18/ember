@@ -32,7 +32,7 @@ export default function Screens() {
               nothing in the way.
             </h2>
           </div>
-          <p className="mt-5 max-w-[46ch] text-[0.9375rem] leading-relaxed text-muted md:mb-2 md:mt-0">
+          <p className="mt-5 max-w-[46ch] text-base leading-relaxed text-muted md:mb-2 md:mt-0">
             Library, reader, RSVP. Settings exist, but you will not need them often.
           </p>
         </Reveal>
@@ -65,7 +65,7 @@ export default function Screens() {
                   <figcaption className="mt-4 border-t border-rule pt-3">
                     <span className="meta text-ember">Fig. 0{i + 1}</span>
                     <p className="mt-1.5 text-sm font-medium">{plate.label}</p>
-                    <p className="mt-1 text-[0.8125rem] leading-relaxed text-muted">{plate.caption}</p>
+                    <p className="mt-1 text-[0.875rem] leading-relaxed text-muted">{plate.caption}</p>
                   </figcaption>
                 </figure>
               </Reveal>

@@ -39,9 +39,10 @@ public/
 
 ## Design rules
 
-- Warm paper background, ink text, one ember accent. Colours are CSS variables in `src/index.css`
-  and flip automatically under `prefers-color-scheme: dark`.
-- Instrument Serif for display, Instrument Sans for body, JetBrains Mono for labels and numbers.
+- Sepia Press palette: aged parchment, brown-black ink, oxblood accent. Colours are CSS variables
+  in `src/index.css` and flip to espresso (cream text, terracotta accent) under
+  `prefers-color-scheme: dark`.
+- Fraunces for display, Lora for prose, JetBrains Mono for labels and numbers.
 - Hairline rules instead of cards; square buttons; no decorative gradients.
 - Motion: the hero demo, one load sequence, and scroll reveals on section headers. Everything is
   disabled or paused when the visitor asks for reduced motion.
